@@ -13,20 +13,27 @@ from oauth2client.service_account import ServiceAccountCredentials
 app = Flask(__name__)
 CORS(app)
 
+# ==============================
+# 🏠 HOME ROUTE
+# ==============================
 @app.route("/")
 def home():
     return "Mini ATS is running 🚀"
 
+# ==============================
+# 📁 UPLOAD SETUP
+# ==============================
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# ==============================
 # 🔑 API KEY
+# ==============================
 API_KEY = os.getenv("API_KEY")
 
 # ==============================
-# 🔗 GOOGLE SHEETS SETUP (FIXED CLEAN)
+# 🔗 GOOGLE SHEETS SETUP
 # ==============================
-
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
@@ -37,10 +44,10 @@ creds_json = os.getenv("GOOGLE_CREDENTIALS")
 if not creds_json:
     raise Exception("GOOGLE_CREDENTIALS not set in Render")
 
-# ✅ Parse JSON safely
 try:
     creds_dict = json.loads(creds_json)
 
+    # handle double-encoded JSON
     if isinstance(creds_dict, str):
         creds_dict = json.loads(creds_dict)
 
@@ -48,7 +55,6 @@ except Exception as e:
     print("❌ JSON ERROR:", e)
     raise
 
-# ✅ Authenticate
 try:
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
@@ -57,7 +63,6 @@ try:
 except Exception as e:
     print("❌ GOOGLE AUTH ERROR:", e)
     raise
-
 
 # ==============================
 # 🔍 EXTRACT TEXT
@@ -83,19 +88,19 @@ def extract_text(filepath, filename):
 
     return text
 
-
 # ==============================
 # 🚀 UPLOAD ROUTE
 # ==============================
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    file = request.files['resume']
-    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(filepath)
+    try:
+        file = request.files['resume']
+        filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+        file.save(filepath)
 
-    text = extract_text(filepath, file.filename)
+        text = extract_text(filepath, file.filename)
 
-    prompt = f"""
+        prompt = f"""
 Extract ONLY the following details from this resume:
 
 - Name
@@ -108,71 +113,74 @@ Extract ONLY the following details from this resume:
 - Total Experience
 
 Return JSON only.
+
 Resume:
 {text}
 """
 
-    response = requests.post(
-        url="https://openrouter.ai/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {API_KEY}",
-            "Content-Type": "application/json"
-        },
-        json={
-            "model": "deepseek/deepseek-chat",
-            "messages": [{"role": "user", "content": prompt}]
-        }
-    )
+        response = requests.post(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "deepseek/deepseek-chat",
+                "messages": [{"role": "user", "content": prompt}]
+            }
+        )
 
-    result = response.json()
+        result = response.json()
 
-    try:
         output = result['choices'][0]['message']['content']
-    except:
-        return "Error from AI"
 
-    try:
         json_match = re.search(r'\{.*\}', output, re.DOTALL)
         data = json.loads(json_match.group(0))
-    except:
-        return "Parsing error"
 
-    try:
-        row_count = len(sheet.get_all_values()) + 1
+        # ✅ WRITE TO GOOGLE SHEET (FINAL FIX)
+        try:
+            sheet.append_row([
+                data.get("name", ""),
+                data.get("email", ""),
+                data.get("phone", ""),
+                data.get("linkedin", ""),
+                data.get("location", ""),
+                data.get("education_year", ""),
+                ", ".join(data.get("skills", [])),
+                data.get("experience", "")
+            ])
 
-        sheet.update(f"A{row_count}:H{row_count}", [[
-            data.get("name", ""),
-            data.get("email", ""),
-            data.get("phone", ""),
-            data.get("linkedin", ""),
-            data.get("location", ""),
-            data.get("education_year", ""),
-            ", ".join(data.get("skills", [])),
-            data.get("experience", "")
-        ]])
+            print("✅ DATA WRITTEN TO SHEET")
+
+        except Exception as e:
+            print("❌ SHEET ERROR:", e)
+            return f"Sheet error: {str(e)}"
+
+        return "Uploaded successfully"
 
     except Exception as e:
-        print("Sheet error:", e)
-        return "Sheet error"
-
-    return "Uploaded successfully"
-
+        print("❌ UPLOAD ERROR:", e)
+        return f"Upload error: {str(e)}"
 
 # ==============================
-# 🚀 TRACK ROUTE
+# 🔍 TRACK ROUTE
 # ==============================
 @app.route('/track', methods=['GET'])
 def track_application():
-    email = request.args.get('email')
+    try:
+        email = request.args.get('email')
 
-    records = sheet.get_all_records()
+        records = sheet.get_all_records()
 
-    for row in records:
-        if row.get("Email", "").lower() == email.lower():
-            return jsonify(row)
+        for row in records:
+            if row.get("Email", "").lower() == email.lower():
+                return jsonify(row)
 
-    return jsonify({"status": "Not Found"})
+        return jsonify({"status": "Not Found"})
 
+    except Exception as e:
+        print("❌ TRACK ERROR:", e)
+        return f"Track error: {str(e)}"
 
 # ==============================
 # 🚀 RUN
