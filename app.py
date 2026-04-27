@@ -13,6 +13,10 @@ from oauth2client.service_account import ServiceAccountCredentials
 app = Flask(__name__)
 CORS(app)
 
+@app.route("/")
+def home():
+    return "Mini ATS is running 🚀"
+
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
