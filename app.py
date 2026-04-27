@@ -4,7 +4,6 @@ import os
 import requests
 import json
 import re
-from datetime import datetime
 from PyPDF2 import PdfReader
 import docx
 import gspread
@@ -46,11 +45,8 @@ if not creds_json:
 
 try:
     creds_dict = json.loads(creds_json)
-
-    # handle double encoded JSON
     if isinstance(creds_dict, str):
         creds_dict = json.loads(creds_dict)
-
 except Exception as e:
     print("❌ JSON ERROR:", e)
     raise
@@ -59,8 +55,7 @@ try:
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
     sheet = client.open_by_key("1UN6j6_AhW_XFe--kS7ZJU07XXDQHjwRABF6n1uVpxVQ").sheet1
-    print("✅ Connected to Google Sheet")
-
+    print("✅ Google Sheet Connected")
 except Exception as e:
     print("❌ GOOGLE AUTH ERROR:", e)
     raise
@@ -98,10 +93,12 @@ def upload_file():
         file.save(filepath)
 
         text = extract_text(filepath, file.filename)
-        print("📄 TEXT EXTRACTED")
+
+        # 🔥 MEMORY FIX
+        text = text[:3000]
 
         prompt = f"""
-Extract ONLY the following details:
+Extract ONLY:
 
 Name, Email, Phone, LinkedIn, Location, Education Year, Skills, Experience
 
@@ -124,22 +121,17 @@ Resume:
         )
 
         result = response.json()
-        print("🤖 RAW RESPONSE:", result)
-
         output = result.get('choices', [{}])[0].get('message', {}).get('content', '')
-        print("🤖 AI OUTPUT:", output)
 
         json_match = re.search(r'\{.*\}', output, re.DOTALL)
 
         if not json_match:
-            print("❌ NO JSON FOUND")
-            return "AI did not return valid JSON"
+            return "AI JSON error"
 
         data = json.loads(json_match.group(0))
-        print("📊 PARSED DATA:", data)
 
         # ==============================
-        # 📊 WRITE TO GOOGLE SHEET (FINAL FIX)
+        # 📊 WRITE TO GOOGLE SHEET (FIXED)
         # ==============================
         try:
             existing = sheet.get_all_values()
@@ -156,7 +148,7 @@ Resume:
                 data.get("experience", "")
             ]])
 
-            print("✅ DATA WRITTEN TO SHEET AT ROW:", next_row)
+            print("✅ DATA WRITTEN:", next_row)
 
         except Exception as e:
             print("❌ SHEET ERROR:", e)
@@ -165,28 +157,23 @@ Resume:
         return "Uploaded successfully"
 
     except Exception as e:
-        print("❌ UPLOAD ERROR:", e)
-        return f"Upload error: {str(e)}"
+        print("❌ ERROR:", e)
+        return f"Server error: {str(e)}"
 
 # ==============================
 # 🔍 TRACK ROUTE
 # ==============================
 @app.route('/track', methods=['GET'])
 def track_application():
-    try:
-        email = request.args.get('email')
+    email = request.args.get('email')
 
-        records = sheet.get_all_records()
+    records = sheet.get_all_records()
 
-        for row in records:
-            if row.get("Email", "").lower() == email.lower():
-                return jsonify(row)
+    for row in records:
+        if row.get("Email", "").lower() == email.lower():
+            return jsonify(row)
 
-        return jsonify({"status": "Not Found"})
-
-    except Exception as e:
-        print("❌ TRACK ERROR:", e)
-        return f"Track error: {str(e)}"
+    return jsonify({"status": "Not Found"})
 
 # ==============================
 # 🚀 RUN
