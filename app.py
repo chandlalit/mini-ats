@@ -25,17 +25,34 @@ scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
 ]
-# 🔐 Google Credentials (Render ENV based)
+# 🔐 Google Credentials (FINAL FIX)
 creds_json = os.getenv("GOOGLE_CREDENTIALS")
 
 if not creds_json:
-    raise Exception("❌ GOOGLE_CREDENTIALS not set in Render")
+    raise Exception("GOOGLE_CREDENTIALS not set in Render")
 
-# 🔍 DEBUG (temporary — remove later)
-print("CREDS RAW:", creds_json[:120])
-
+# 🔥 FIX DOUBLE-ENCODED JSON
 try:
     creds_dict = json.loads(creds_json)
+
+    # if still string → decode again
+    if isinstance(creds_dict, str):
+        creds_dict = json.loads(creds_dict)
+
+except Exception as e:
+    print("❌ JSON ERROR:", e)
+    raise
+
+# ✅ Create credentials
+try:
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+except Exception as e:
+    print("❌ GOOGLE AUTH ERROR:", e)
+    raise
+
+client = gspread.authorize(creds)
+
+sheet = client.open_by_key("1UN6j6_AhW_XFe--kS7ZJU07XXDQHjwRABF6n1uVpxVQ").sheet1
 except Exception as e:
     print("❌ JSON LOAD ERROR:", e)
     raise
