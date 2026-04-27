@@ -46,8 +46,11 @@ if not creds_json:
 
 try:
     creds_dict = json.loads(creds_json)
+
+    # handle double encoded JSON
     if isinstance(creds_dict, str):
         creds_dict = json.loads(creds_dict)
+
 except Exception as e:
     print("❌ JSON ERROR:", e)
     raise
@@ -57,6 +60,7 @@ try:
     client = gspread.authorize(creds)
     sheet = client.open_by_key("1UN6j6_AhW_XFe--kS7ZJU07XXDQHjwRABF6n1uVpxVQ").sheet1
     print("✅ Connected to Google Sheet")
+
 except Exception as e:
     print("❌ GOOGLE AUTH ERROR:", e)
     raise
@@ -77,7 +81,6 @@ def extract_text(filepath, filename):
         text = "\n".join([para.text for para in doc.paragraphs])
 
     return text
-
 
 # ==============================
 # 🚀 UPLOAD ROUTE
@@ -136,10 +139,13 @@ Resume:
         print("📊 PARSED DATA:", data)
 
         # ==============================
-        # 📊 WRITE TO GOOGLE SHEET
+        # 📊 WRITE TO GOOGLE SHEET (FINAL FIX)
         # ==============================
         try:
-            sheet.append_row([
+            existing = sheet.get_all_values()
+            next_row = len(existing) + 1
+
+            sheet.update(f"A{next_row}:H{next_row}", [[
                 data.get("name", ""),
                 data.get("email", ""),
                 data.get("phone", ""),
@@ -148,9 +154,9 @@ Resume:
                 data.get("education_year", ""),
                 ", ".join(data.get("skills", [])),
                 data.get("experience", "")
-            ])
+            ]])
 
-            print("✅ SUCCESS: DATA WRITTEN TO SHEET")
+            print("✅ DATA WRITTEN TO SHEET AT ROW:", next_row)
 
         except Exception as e:
             print("❌ SHEET ERROR:", e)
@@ -161,7 +167,6 @@ Resume:
     except Exception as e:
         print("❌ UPLOAD ERROR:", e)
         return f"Upload error: {str(e)}"
-
 
 # ==============================
 # 🔍 TRACK ROUTE
@@ -182,7 +187,6 @@ def track_application():
     except Exception as e:
         print("❌ TRACK ERROR:", e)
         return f"Track error: {str(e)}"
-
 
 # ==============================
 # 🚀 RUN
