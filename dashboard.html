@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Recruiter Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #f4f6f9;
+      padding: 20px;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    .filters {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+
+    input, select {
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+
+    th {
+      background: #007bff;
+      color: white;
+    }
+
+    textarea {
+      width: 100%;
+      border-radius: 5px;
+    }
+
+    button {
+      padding: 6px 10px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>Recruiter Dashboard</h2>
+
+<div class="filters">
+  <input type="text" id="search" placeholder="Search name/email">
+
+  <select id="roleFilter">
+    <option value="">All Roles</option>
+  </select>
+
+  <select id="statusFilter">
+    <option value="">All Status</option>
+    <option>New</option>
+    <option>Screening</option>
+    <option>L1 Interview Scheduled</option>
+    <option>L1 Shortlisted</option>
+    <option>Sent to Client</option>
+    <option>Client Interview</option>
+    <option>Client Select</option>
+    <option>Offer Released</option>
+    <option>Offer Accepted</option>
+  </select>
+
+  <select id="typeFilter">
+    <option value="">All Types</option>
+    <option>Active</option>
+    <option>Passive</option>
+    <option>Enough Pipeline</option>
+  </select>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Email</th>
+      <th>Role</th>
+      <th>Status</th>
+      <th>Notes</th>
+      <th>Feedback</th>
+      <th>Save</th>
+    </tr>
+  </thead>
+  <tbody id="tableBody"></tbody>
+</table>
+
+<script>
+
+let allData = [];
+
+fetch("http://localhost:5000/candidates")
+  .then(res => res.json())
+  .then(data => {
+    allData = data;
+
+    // Populate role dropdown dynamically
+    let roles = [...new Set(data.map(d => d.Role).filter(Boolean))];
+    let roleSelect = document.getElementById("roleFilter");
+
+    roles.forEach(role => {
+      let option = document.createElement("option");
+      option.text = role;
+      option.value = role;
+      roleSelect.appendChild(option);
+    });
+
+    renderTable(data);
+  });
+
+
+function renderTable(data) {
+  let tbody = document.getElementById("tableBody");
+  tbody.innerHTML = "";
+
+  data.forEach(row => {
+    let tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${row.Name}</td>
+      <td>${row.Email}</td>
+      <td>${row.Role || ""}</td>
+
+      <td>
+        <select>
+          <option>New</option>
+          <option>Screening</option>
+          <option>L1 Interview Scheduled</option>
+          <option>L1 Shortlisted</option>
+          <option>Sent to Client</option>
+          <option>Client Interview</option>
+          <option>Client Select</option>
+          <option>Offer Released</option>
+          <option>Offer Accepted</option>
+        </select>
+      </td>
+
+      <td><textarea rows="2">${row.Notes || ""}</textarea></td>
+      <td><textarea rows="2">${row["L1 Feedback"] || ""}</textarea></td>
+
+      <td><button>Save</button></td>
+    `;
+
+    let select = tr.querySelector("select");
+    select.value = row.Status || "New";
+
+    tr.querySelector("button").onclick = () => {
+      fetch("http://localhost:5000/update", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          email: row.Email,
+          status: select.value,
+          notes: tr.children[4].querySelector("textarea").value,
+          l1_feedback: tr.children[5].querySelector("textarea").value
+        })
+      })
+      .then(() => alert("Updated"));
+    };
+
+    tbody.appendChild(tr);
+  });
+}
+
+
+// 🔍 FILTER LOGIC
+document.querySelectorAll("#search, #roleFilter, #statusFilter, #typeFilter")
+.forEach(el => el.addEventListener("input", applyFilters));
+
+function applyFilters() {
+  let search = document.getElementById("search").value.toLowerCase();
+  let role = document.getElementById("roleFilter").value;
+  let status = document.getElementById("statusFilter").value;
+  let type = document.getElementById("typeFilter").value;
+
+  let filtered = allData.filter(row => {
+    return (
+      (row.Name?.toLowerCase().includes(search) || row.Email?.toLowerCase().includes(search)) &&
+      (!role || row.Role === role) &&
+      (!status || row.Status === status) &&
+      (!type || row["Role Type"] === type)
+    );
+  });
+
+  renderTable(filtered);
+}
+
+</script>
+
+</body>
+</html>

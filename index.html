@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Accion Labs - Apply</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f4f6f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      background: white;
+      width: 95%;
+      max-width: 500px;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+
+    .logo {
+      width: 180px; /* 🔥 Bigger logo */
+      margin-bottom: 10px;
+    }
+
+    .title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1f2d3d;
+      margin-top: 10px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #6c7a89;
+      margin-bottom: 20px;
+    }
+
+    .divider {
+      width: 50px;
+      height: 3px;
+      background: #007bff;
+      margin: 10px auto 20px;
+      border-radius: 2px;
+    }
+
+    h2 {
+      margin: 10px 0;
+      font-size: 22px;
+    }
+
+    p {
+      color: #6c7a89;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .input-box {
+      width: 100%;
+      padding: 14px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      font-size: 14px;
+    }
+
+    .upload-box {
+      border: 2px dashed #d0d7e2;
+      padding: 30px;
+      border-radius: 10px;
+      margin: 20px 0;
+      background: #fafbfc;
+    }
+
+    .upload-box p {
+      margin: 10px 0;
+      font-size: 14px;
+    }
+
+    .upload-btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(90deg, #007bff, #0056d6);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+
+    .disclaimer {
+      margin-top: 20px;
+      font-size: 12px;
+      color: #7d8a97;
+      background: #f1f3f6;
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- 🔥 BIG LOGO -->
+    <img src="logo.png" class="logo">
+
+    <div class="title">Recruitment Portal</div>
+    <div class="subtitle">Build the future with us</div>
+    <div class="divider"></div>
+
+    <h2>Apply for Opportunities</h2>
+    <p>Upload your resume and we’ll review your profile shortly</p>
+
+    <form action="http://127.0.0.1:5000/upload" method="post" enctype="multipart/form-data">
+
+      <input type="text" name="name" placeholder="Full Name" class="input-box" required>
+      <input type="email" name="email" placeholder="Email Address" class="input-box" required>
+
+      <div class="upload-box">
+        <p><strong>Upload Your Resume</strong></p>
+        <p>PDF, DOC, DOCX (Max 5MB)</p>
+        <input type="file" name="resume" required>
+      </div>
+
+      <button type="submit" class="submit-btn">Submit Application</button>
+
+    </form>
+
+    <div class="disclaimer">
+      This is not an official Accion Labs application page. This form is used for initial screening purposes only.
+    </div>
+
+  </div>
+
+</body>
+</html>

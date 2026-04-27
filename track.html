@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Track Application - Accion Labs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Arial;
+  background: #f4f6f9;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.container {
+  background: white;
+  width: 90%;
+  max-width: 520px;
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+
+.logo {
+  width: 140px;
+  display: block;
+  margin: 0 auto 15px;
+}
+
+h2 {
+  text-align: center;
+}
+
+.subtitle {
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+input {
+  width: 100%;
+  padding: 14px;
+  margin: 15px 0;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(90deg, #007bff, #0056d6);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.result {
+  margin-top: 20px;
+  padding: 20px;
+  border-radius: 12px;
+  background: #f9fafc;
+  display: none;
+}
+
+/* STEP */
+.step {
+  padding: 14px;
+  margin: 10px 0;
+  border-radius: 10px;
+  border: 1px solid #eee;
+  cursor: pointer;
+}
+
+/* COLORS */
+.completed {
+  background: #f0fdf4;
+  border-left: 4px solid #22c55e;
+}
+
+.current {
+  background: #eef4ff;
+  border-left: 4px solid #2563eb;
+  font-weight: 600;
+}
+
+/* BADGE */
+.badge {
+  background: #2563eb;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+/* FEEDBACK */
+.feedback {
+  display: none;
+  margin-top: 12px;
+  padding: 14px;
+  font-size: 13px;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  line-height: 1.6;
+  text-align: justify;
+}
+
+/* RATINGS */
+.rating-box {
+  margin-top: 12px;
+  padding: 10px;
+  background: #f1f5ff;
+  border-radius: 8px;
+}
+
+.rating-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 5px 0;
+  font-size: 13px;
+}
+
+.stars {
+  color: #fbbf24;
+}
+
+.disclaimer {
+  margin-top: 15px;
+  font-size: 11px;
+  color: #888;
+  text-align: center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<img src="logo.png" class="logo">
+
+<h2>Track Your Application</h2>
+<p class="subtitle">Enter your email to check your application status</p>
+
+<input type="email" id="email" placeholder="Enter your email">
+<button onclick="track()">Check Status</button>
+
+<div class="result" id="result">
+  <p><strong>Name:</strong> <span id="name"></span></p>
+  <p><strong>Status:</strong> <span id="status"></span></p>
+
+  <div id="timeline"></div>
+</div>
+
+<div class="disclaimer">
+This is not an official Accion Labs application page.
+</div>
+
+</div>
+
+<script>
+
+// ⭐ stars
+function getStars(value) {
+  let full = Math.floor(value);
+  let half = value % 1 >= 0.5;
+  let stars = "⭐".repeat(full);
+  if (half) stars += "☆";
+  return stars.padEnd(5, "☆");
+}
+
+// extract ratings
+function extractRatings(text) {
+  let ratings = {};
+  let regex = /([A-Za-z +\/]+):\s*(\d(\.\d)?)/g;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    ratings[match[1].trim()] = parseFloat(match[2]);
+  }
+
+  return ratings;
+}
+
+function track() {
+  let email = document.getElementById("email").value;
+
+  fetch(`http://localhost:5000/track?email=${email}`)
+    .then(res => res.json())
+    .then(data => {
+
+      document.getElementById("result").style.display = "block";
+      document.getElementById("name").innerText = data.name || "";
+      document.getElementById("status").innerText = data.status || "";
+
+      const steps = [
+        "New",
+        "Screening",
+        "L1 Interview Scheduled",
+        "L1 Shortlisted",
+        "Sent to Client",
+        "Client Interview",
+        "Client Select",
+        "Offer Released",
+        "Offer Accepted"
+      ];
+
+      let currentIndex = steps.indexOf(data.status);
+      let html = "";
+
+      steps.forEach((step, index) => {
+
+        let className = index < currentIndex ? "completed" : "";
+        if(index === currentIndex) className = "current";
+
+        let isCurrent = index === currentIndex;
+
+        let feedbackText = "";
+        let ratingsHTML = "";
+
+        if (
+          isCurrent &&
+          (
+            step === "L1 Interview Scheduled" ||
+            step === "L1 Shortlisted"
+          )
+        ) {
+          feedbackText = data.l1_feedback || "";
+
+          if (feedbackText) {
+            let ratings = extractRatings(feedbackText);
+
+            if (Object.keys(ratings).length > 0) {
+              ratingsHTML += `<div class="rating-box">`;
+
+              for (let skill in ratings) {
+                ratingsHTML += `
+                  <div class="rating-row">
+                    <span>${skill}</span>
+                    <span class="stars">${getStars(ratings[skill])}</span>
+                  </div>
+                `;
+              }
+
+              ratingsHTML += `</div>`;
+            }
+          }
+        }
+
+        html += `
+          <div class="step ${className}" onclick="toggleFeedback(this)">
+            ${step} ${isCurrent ? '<span class="badge">Current</span>' : ''}
+        `;
+
+        if (feedbackText) {
+          html += `
+            <div class="feedback">
+              ${feedbackText}
+              ${ratingsHTML}
+            </div>
+          `;
+        }
+
+        html += `</div>`;
+      });
+
+      document.getElementById("timeline").innerHTML = html;
+    });
+}
+
+function toggleFeedback(el) {
+  let feedback = el.querySelector(".feedback");
+  if (!feedback) return;
+
+  feedback.style.display =
+    feedback.style.display === "block" ? "none" : "block";
+}
+</script>
+
+</body>
+</html>
