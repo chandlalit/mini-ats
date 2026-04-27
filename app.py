@@ -2,8 +2,12 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import json
+import re
+import requests
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from PyPDF2 import PdfReader
+import docx
 
 app = Flask(__name__)
 CORS(app)
@@ -22,6 +26,11 @@ UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ==============================
+# 🔑 API KEY
+# ==============================
+API_KEY = os.getenv("API_KEY")
+
+# ==============================
 # 🔗 GOOGLE SHEETS SETUP
 # ==============================
 scope = [
@@ -36,19 +45,41 @@ if not creds_json:
 
 creds_dict = json.loads(creds_json)
 
-# Fix double encoding (important)
 if isinstance(creds_dict, str):
     creds_dict = json.loads(creds_dict)
 
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
-
 sheet = client.open_by_key("1UN6j6_AhW_XFe--kS7ZJU07XXDQHjwRABF6n1uVpxVQ").sheet1
 
 print("✅ Connected to Google Sheet")
 
 # ==============================
-# 🚀 UPLOAD ROUTE (LIGHT VERSION)
+# 📄 TEXT EXTRACTION
+# ==============================
+def extract_text(filepath, filename):
+    text = ""
+
+    if filename.lower().endswith(".pdf"):
+        reader = PdfReader(filepath)
+        for page in reader.pages:
+            text += page.extract_text() or ""
+
+    elif filename.lower().endswith(".docx"):
+        doc = docx.Document(filepath)
+        text = "\n".join([p.text for p in doc.paragraphs])
+
+    else:
+        try:
+            with open(filepath, "r", errors="ignore") as f:
+                text = f.read()
+        except:
+            text = ""
+
+    return text
+
+# ==============================
+# 🚀 UPLOAD ROUTE (FINAL)
 # ==============================
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -64,39 +95,96 @@ def upload_file():
 
         print("📄 FILE SAVED")
 
-        # 🔥 NO AI — dummy data (to avoid crash)
-        data = {
-            "name": "Test User",
-            "email": "test@example.com",
-            "phone": "1234567890",
-            "linkedin": "linkedin.com/test",
-            "location": "India",
-            "education_year": "2024",
-            "skills": ["Python", "AI"],
-            "experience": "1 year"
-        }
+        text = extract_text(filepath, file.filename)
 
-        existing = sheet.get_all_values()
-        next_row = len(existing) + 1
+        if not text.strip():
+            return "Could not read file"
 
-        sheet.update(f"A{next_row}:H{next_row}", [[
-            data["name"],
-            data["email"],
-            data["phone"],
-            data["linkedin"],
-            data["location"],
-            data["education_year"],
-            ", ".join(data["skills"]),
-            data["experience"]
-        ]])
+        print("📄 TEXT EXTRACTED")
 
-        print("✅ DATA WRITTEN TO SHEET")
+        # ==============================
+        # 🤖 AI CALL
+        # ==============================
+        prompt = f"""
+Extract the following details from the resume:
+
+- name
+- email
+- phone
+- linkedin
+- location
+- education_year
+- skills (list)
+- experience
+
+Return ONLY valid JSON.
+
+Resume:
+{text[:4000]}
+"""
+
+        response = requests.post(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "deepseek/deepseek-chat",
+                "messages": [{"role": "user", "content": prompt}]
+            }
+        )
+
+        result = response.json()
+        print("🔍 RAW AI:", result)
+
+        if "choices" not in result:
+            return "AI failed"
+
+        output = result['choices'][0]['message']['content']
+        print("🧠 AI OUTPUT:", output)
+
+        # ==============================
+        # 🧠 PARSE JSON
+        # ==============================
+        json_match = re.search(r'\{.*\}', output, re.DOTALL)
+
+        if not json_match:
+            return "AI parsing failed"
+
+        data = json.loads(json_match.group(0))
+        print("✅ PARSED:", data)
+
+        # ==============================
+        # ✅ VALIDATION
+        # ==============================
+        name = data.get("name") or data.get("Name")
+        email = data.get("email") or data.get("Email")
+
+        if not name or not email:
+            return "Invalid resume data"
+
+        # ==============================
+        # 📊 WRITE TO SHEET
+        # ==============================
+        sheet.append_row([
+            name,
+            email,
+            data.get("phone", ""),
+            data.get("linkedin", ""),
+            data.get("location", ""),
+            data.get("education_year", ""),
+            ", ".join(data.get("skills", [])) if isinstance(data.get("skills"), list) else "",
+            data.get("experience", "")
+        ])
+
+        print("✅ DATA WRITTEN")
 
         return "Uploaded successfully"
 
     except Exception as e:
         print("❌ ERROR:", e)
-        return f"Error: {str(e)}"
+        return "Internal Server Error"
 
 # ==============================
 # 🚀 RUN
