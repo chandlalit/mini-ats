@@ -26,7 +26,13 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+creds_json = os.getenv("GOOGLE_CREDENTIALS")
+
+if not creds_json:
+    raise Exception("GOOGLE_CREDENTIALS not set")
+
+creds_dict = json.loads(creds_json)
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
 sheet = client.open_by_key("1UN6j6_AhW_XFe--kS7ZJU07XXDQHjwRABF6n1uVpxVQ").sheet1
@@ -231,4 +237,6 @@ def update_candidate():
 # 🚀 RUN SERVER
 # ==============================
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+    
