@@ -17,7 +17,7 @@ UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # 🔑 PUT YOUR OPENROUTER API KEY HERE
-API_KEY = "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"
+API_KEY = os.getenv("API_KEY")
 
 
 # 🔗 Google Sheets setup
