@@ -14,7 +14,7 @@ app = Flask(__name__)
 CORS(app)
 
 # ==============================
-# 🏠 HOME ROUTE
+# 🏠 HOME
 # ==============================
 @app.route("/")
 def home():
@@ -42,15 +42,12 @@ scope = [
 creds_json = os.getenv("GOOGLE_CREDENTIALS")
 
 if not creds_json:
-    raise Exception("GOOGLE_CREDENTIALS not set in Render")
+    raise Exception("GOOGLE_CREDENTIALS not set")
 
 try:
     creds_dict = json.loads(creds_json)
-
-    # handle double-encoded JSON
     if isinstance(creds_dict, str):
         creds_dict = json.loads(creds_dict)
-
 except Exception as e:
     print("❌ JSON ERROR:", e)
     raise
@@ -59,7 +56,7 @@ try:
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
     sheet = client.open_by_key("1UN6j6_AhW_XFe--kS7ZJU07XXDQHjwRABF6n1uVpxVQ").sheet1
-
+    print("✅ Connected to Google Sheet")
 except Exception as e:
     print("❌ GOOGLE AUTH ERROR:", e)
     raise
@@ -79,14 +76,8 @@ def extract_text(filepath, filename):
         doc = docx.Document(filepath)
         text = "\n".join([para.text for para in doc.paragraphs])
 
-    else:
-        try:
-            with open(filepath, 'r', errors='ignore') as f:
-                text = f.read()
-        except:
-            text = ""
-
     return text
+
 
 # ==============================
 # 🚀 UPLOAD ROUTE
@@ -100,17 +91,13 @@ def upload_file():
 
         text = extract_text(filepath, file.filename)
 
-        prompt = f"""
-Extract ONLY the following details from this resume:
+        print("📄 EXTRACTED TEXT (first 300 chars):")
+        print(text[:300])
 
-- Name
-- Email
-- Phone
-- LinkedIn URL
-- Location
-- Highest Education Year
-- Top 5 Skills
-- Total Experience
+        prompt = f"""
+Extract ONLY the following details:
+
+Name, Email, Phone, LinkedIn, Location, Education Year, Skills, Experience
 
 Return JSON only.
 
@@ -131,13 +118,29 @@ Resume:
         )
 
         result = response.json()
+        print("🤖 RAW AI RESPONSE:", result)
 
-        output = result['choices'][0]['message']['content']
+        output = result.get('choices', [{}])[0].get('message', {}).get('content', '')
 
-        json_match = re.search(r'\{.*\}', output, re.DOTALL)
-        data = json.loads(json_match.group(0))
+        print("🤖 AI OUTPUT:", output)
 
-        # ✅ WRITE TO GOOGLE SHEET (FINAL FIX)
+        # Extract JSON safely
+        try:
+            json_match = re.search(r'\{.*\}', output, re.DOTALL)
+            if not json_match:
+                raise Exception("No JSON found in AI response")
+
+            data = json.loads(json_match.group(0))
+
+        except Exception as e:
+            print("❌ PARSE ERROR:", e)
+            return f"Parse error: {str(e)}"
+
+        print("📊 FINAL DATA:", data)
+
+        # ==============================
+        # 📊 WRITE TO GOOGLE SHEET
+        # ==============================
         try:
             sheet.append_row([
                 data.get("name", ""),
@@ -150,7 +153,7 @@ Resume:
                 data.get("experience", "")
             ])
 
-            print("✅ DATA WRITTEN TO SHEET")
+            print("✅ SUCCESS: DATA WRITTEN TO SHEET")
 
         except Exception as e:
             print("❌ SHEET ERROR:", e)
@@ -161,6 +164,7 @@ Resume:
     except Exception as e:
         print("❌ UPLOAD ERROR:", e)
         return f"Upload error: {str(e)}"
+
 
 # ==============================
 # 🔍 TRACK ROUTE
@@ -179,8 +183,8 @@ def track_application():
         return jsonify({"status": "Not Found"})
 
     except Exception as e:
-        print("❌ TRACK ERROR:", e)
         return f"Track error: {str(e)}"
+
 
 # ==============================
 # 🚀 RUN
