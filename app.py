@@ -16,26 +16,27 @@ CORS(app)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# 🔑 PUT YOUR OPENROUTER API KEY HERE
+# 🔑 API KEY
 API_KEY = os.getenv("API_KEY")
 
+# ==============================
+# 🔗 GOOGLE SHEETS SETUP (FIXED CLEAN)
+# ==============================
 
-# 🔗 Google Sheets setup
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive"
 ]
-# 🔐 Google Credentials (FINAL FIX)
+
 creds_json = os.getenv("GOOGLE_CREDENTIALS")
 
 if not creds_json:
     raise Exception("GOOGLE_CREDENTIALS not set in Render")
 
-# 🔥 FIX DOUBLE-ENCODED JSON
+# ✅ Parse JSON safely
 try:
     creds_dict = json.loads(creds_json)
 
-    # if still string → decode again
     if isinstance(creds_dict, str):
         creds_dict = json.loads(creds_dict)
 
@@ -43,33 +44,19 @@ except Exception as e:
     print("❌ JSON ERROR:", e)
     raise
 
-# ✅ Create credentials
+# ✅ Authenticate
 try:
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    client = gspread.authorize(creds)
+    sheet = client.open_by_key("1UN6j6_AhW_XFe--kS7ZJU07XXDQHjwRABF6n1uVpxVQ").sheet1
+
 except Exception as e:
     print("❌ GOOGLE AUTH ERROR:", e)
     raise
-
-client = gspread.authorize(creds)
-
-sheet = client.open_by_key("1UN6j6_AhW_XFe--kS7ZJU07XXDQHjwRABF6n1uVpxVQ").sheet1
-except Exception as e:
-    print("❌ JSON LOAD ERROR:", e)
-    raise
-
-try:
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-except Exception as e:
-    print("❌ GOOGLE AUTH ERROR:", e)
-    raise
-
-client = gspread.authorize(creds)
-
-sheet = client.open_by_key("1UN6j6_AhW_XFe--kS7ZJU07XXDQHjwRABF6n1uVpxVQ").sheet1
 
 
 # ==============================
-# 🔍 EXTRACT TEXT (PDF + DOCX)
+# 🔍 EXTRACT TEXT
 # ==============================
 def extract_text(filepath, filename):
     text = ""
@@ -104,35 +91,19 @@ def upload_file():
 
     text = extract_text(filepath, file.filename)
 
-    print("\n=== EXTRACTED TEXT ===")
-    print(text[:1000])
-    print("=====================\n")
-
     prompt = f"""
 Extract ONLY the following details from this resume:
 
 - Name
 - Email
 - Phone
-- LinkedIn URL (if present, else "")
-- Location / Country (if present, else "")
-- Highest Education Year (if present, else "")
-- Top 5 Skills (short list)
-- Total Experience (in years, just number)
+- LinkedIn URL
+- Location
+- Highest Education Year
+- Top 5 Skills
+- Total Experience
 
-Return STRICTLY in this JSON format:
-
-{{
-  "name": "",
-  "email": "",
-  "phone": "",
-  "linkedin": "",
-  "location": "",
-  "education_year": "",
-  "skills": [],
-  "experience": ""
-}}
-
+Return JSON only.
 Resume:
 {text}
 """
@@ -145,9 +116,7 @@ Resume:
         },
         json={
             "model": "deepseek/deepseek-chat",
-            "messages": [
-                {"role": "user", "content": prompt}
-            ]
+            "messages": [{"role": "user", "content": prompt}]
         }
     )
 
@@ -156,32 +125,18 @@ Resume:
     try:
         output = result['choices'][0]['message']['content']
     except:
-        output = str(result)
+        return "Error from AI"
 
-    print("\n=== AI OUTPUT ===")
-    print(output)
-    print("=================\n")
-
-    # 🔥 Extract clean JSON
     try:
         json_match = re.search(r'\{.*\}', output, re.DOTALL)
-        clean_json = json_match.group(0)
-        data = json.loads(clean_json)
-    except Exception as e:
-        print("❌ Parsing error:", e)
-        print("Raw output:", output)
-        return "Error parsing AI response"
-
-    # ==============================
-    # 📊 SAVE TO SHEET (FIXED)
-    # ==============================
-    print("=== BEFORE APPEND ===")
-    print(data)
+        data = json.loads(json_match.group(0))
+    except:
+        return "Parsing error"
 
     try:
         row_count = len(sheet.get_all_values()) + 1
 
-        sheet.update(f"A{row_count}:N{row_count}", [[
+        sheet.update(f"A{row_count}:H{row_count}", [[
             data.get("name", ""),
             data.get("email", ""),
             data.get("phone", ""),
@@ -189,25 +144,14 @@ Resume:
             data.get("location", ""),
             data.get("education_year", ""),
             ", ".join(data.get("skills", [])),
-            data.get("experience", ""),
-            "New",
-            "",
-            datetime.now().strftime("%Y-%m-%d"),
-            "",
-            "",
-            ""
+            data.get("experience", "")
         ]])
 
-        print("✅ ROW ADDED TO SHEET")
-
     except Exception as e:
-        print("❌ ERROR ADDING TO SHEET:", e)
-        return "Error saving to Google Sheet"
+        print("Sheet error:", e)
+        return "Sheet error"
 
-    return """
-    <h2>✅ Resume uploaded successfully!</h2>
-    <p>Your profile has been recorded.</p>
-    """
+    return "Uploaded successfully"
 
 
 # ==============================
@@ -217,56 +161,18 @@ Resume:
 def track_application():
     email = request.args.get('email')
 
-    if not email:
-        return jsonify({"status": "Enter email"})
-
     records = sheet.get_all_records()
 
     for row in records:
         if row.get("Email", "").lower() == email.lower():
-            return jsonify({
-                "name": row.get("Name", ""),
-                "status": row.get("Status", "New"),
-                "notes": row.get("Notes", ""),
-                "l1_feedback": row.get("L1 Feedback", "")
-            })
+            return jsonify(row)
 
     return jsonify({"status": "Not Found"})
 
 
 # ==============================
-# 🚀 DASHBOARD APIs
-# ==============================
-@app.route('/candidates', methods=['GET'])
-def get_candidates():
-    records = sheet.get_all_records()
-    return jsonify(records)
-
-
-@app.route('/update', methods=['POST'])
-def update_candidate():
-    data = request.json
-    email = data.get("email")
-
-    records = sheet.get_all_records()
-
-    for i, row in enumerate(records):
-        if row.get("Email") == email:
-            row_number = i + 2
-
-            sheet.update_cell(row_number, 9, data.get("status", ""))
-            sheet.update_cell(row_number, 10, data.get("notes", ""))
-            sheet.update_cell(row_number, 12, data.get("l1_feedback", ""))
-
-            return jsonify({"message": "Updated successfully"})
-
-    return jsonify({"error": "Candidate not found"}), 404
-
-
-# ==============================
-# 🚀 RUN SERVER
+# 🚀 RUN
 # ==============================
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-    
