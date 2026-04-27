@@ -85,14 +85,17 @@ def extract_text(filepath, filename):
 @app.route('/upload', methods=['POST'])
 def upload_file():
     try:
-        file = request.files['resume']
+        print("🚀 UPLOAD HIT")
+
+        file = request.files.get('resume')
+        if not file:
+            return "No file uploaded"
+
         filepath = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(filepath)
 
         text = extract_text(filepath, file.filename)
-
-        print("📄 EXTRACTED TEXT (first 300 chars):")
-        print(text[:300])
+        print("📄 TEXT EXTRACTED")
 
         prompt = f"""
 Extract ONLY the following details:
@@ -118,25 +121,19 @@ Resume:
         )
 
         result = response.json()
-        print("🤖 RAW AI RESPONSE:", result)
+        print("🤖 RAW RESPONSE:", result)
 
         output = result.get('choices', [{}])[0].get('message', {}).get('content', '')
-
         print("🤖 AI OUTPUT:", output)
 
-        # Extract JSON safely
-        try:
-            json_match = re.search(r'\{.*\}', output, re.DOTALL)
-            if not json_match:
-                raise Exception("No JSON found in AI response")
+        json_match = re.search(r'\{.*\}', output, re.DOTALL)
 
-            data = json.loads(json_match.group(0))
+        if not json_match:
+            print("❌ NO JSON FOUND")
+            return "AI did not return valid JSON"
 
-        except Exception as e:
-            print("❌ PARSE ERROR:", e)
-            return f"Parse error: {str(e)}"
-
-        print("📊 FINAL DATA:", data)
+        data = json.loads(json_match.group(0))
+        print("📊 PARSED DATA:", data)
 
         # ==============================
         # 📊 WRITE TO GOOGLE SHEET
@@ -183,6 +180,7 @@ def track_application():
         return jsonify({"status": "Not Found"})
 
     except Exception as e:
+        print("❌ TRACK ERROR:", e)
         return f"Track error: {str(e)}"
 
 
