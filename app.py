@@ -5,7 +5,7 @@ import json
 import re
 import requests
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 from PyPDF2 import PdfReader
 import docx
 
@@ -48,7 +48,7 @@ creds_dict = json.loads(creds_json)
 if isinstance(creds_dict, str):
     creds_dict = json.loads(creds_dict)
 
-creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
 client = gspread.authorize(creds)
 sheet = client.open_by_key("1UN6j6_AhW_XFe--kS7ZJU07XXDQHjwRABF6n1uVpxVQ").sheet1
 
