@@ -27,7 +27,7 @@
     }
 
     .logo {
-      width: 180px; /* 🔥 Bigger logo */
+      width: 180px;
       margin-bottom: 10px;
     }
 
@@ -70,6 +70,7 @@
       border-radius: 8px;
       border: 1px solid #ddd;
       font-size: 14px;
+      box-sizing: border-box;
     }
 
     .upload-box {
@@ -83,15 +84,6 @@
     .upload-box p {
       margin: 10px 0;
       font-size: 14px;
-    }
-
-    .upload-btn {
-      background: #007bff;
-      color: white;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 6px;
-      cursor: pointer;
     }
 
     .submit-btn {
@@ -115,27 +107,42 @@
       border-radius: 8px;
     }
 
+    select.input-box {
+      color: #444;
+      background: white;
+    }
+
+    .no-roles {
+      font-size: 13px;
+      color: #e74c3c;
+      margin: 8px 0;
+    }
   </style>
 </head>
 
 <body>
-
   <div class="container">
 
-    <!-- 🔥 BIG LOGO -->
     <img src="logo.png" class="logo">
-
     <div class="title">Recruitment Portal</div>
     <div class="subtitle">Build the future with us</div>
     <div class="divider"></div>
 
     <h2>Apply for Opportunities</h2>
-    <p>Upload your resume and we’ll review your profile shortly</p>
+    <p>Upload your resume and we'll review your profile shortly</p>
 
-    <form action="http://127.0.0.1:5000/upload" method="post" enctype="multipart/form-data">
+    <form action="https://mini-ats-0dm3.onrender.com/upload" method="post" enctype="multipart/form-data">
 
       <input type="text" name="name" placeholder="Full Name" class="input-box" required>
       <input type="email" name="email" placeholder="Email Address" class="input-box" required>
+
+      <!-- Role Dropdown — loaded dynamically from Roles tab -->
+      <select name="role" id="roleDropdown" class="input-box" required>
+        <option value="" disabled selected>Loading open positions...</option>
+      </select>
+      <div id="noRolesMsg" class="no-roles" style="display:none;">
+        No open positions currently. Please check back later.
+      </div>
 
       <div class="upload-box">
         <p><strong>Upload Your Resume</strong></p>
@@ -152,6 +159,43 @@
     </div>
 
   </div>
+
+  <script>
+    const BASE_URL = "https://mini-ats-0dm3.onrender.com";
+
+    // Load active roles into dropdown
+    fetch(`${BASE_URL}/roles`)
+      .then(res => res.json())
+      .then(roles => {
+        const dropdown = document.getElementById("roleDropdown");
+        dropdown.innerHTML = "";
+
+        if (roles.length === 0) {
+          dropdown.innerHTML = '<option value="" disabled selected>No open positions</option>';
+          document.getElementById("noRolesMsg").style.display = "block";
+          return;
+        }
+
+        // Placeholder option
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        placeholder.textContent = "Select the role you are applying for";
+        dropdown.appendChild(placeholder);
+
+        roles.forEach(role => {
+          const option = document.createElement("option");
+          option.value = role.value;
+          option.textContent = role.label;
+          dropdown.appendChild(option);
+        });
+      })
+      .catch(() => {
+        const dropdown = document.getElementById("roleDropdown");
+        dropdown.innerHTML = '<option value="" disabled selected>Could not load roles</option>';
+      });
+  </script>
 
 </body>
 </html>
