@@ -13,8 +13,101 @@
 
     h2 {
       text-align: center;
+      color: #1f2d3d;
     }
 
+    /* ── ROLE MANAGER ── */
+    .role-manager {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+
+    .role-manager h3 {
+      margin: 0 0 16px 0;
+      color: #1f2d3d;
+      font-size: 16px;
+    }
+
+    .role-add-form {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .role-add-form input, .role-add-form select {
+      padding: 9px 12px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 13px;
+    }
+
+    .role-add-form input {
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .btn-add-role {
+      padding: 9px 18px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .btn-add-role:hover { background: #0056d6; }
+
+    .role-msg {
+      font-size: 13px;
+      margin: 6px 0 10px;
+      min-height: 18px;
+    }
+
+    .role-list-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .role-list-table th {
+      background: #f1f3f6;
+      padding: 8px 10px;
+      text-align: left;
+      color: #555;
+    }
+
+    .role-list-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .status-badge {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .status-active   { background: #d1fae5; color: #065f46; }
+    .status-inactive { background: #fee2e2; color: #991b1b; }
+    .status-enough   { background: #fef3c7; color: #92400e; }
+
+    .btn-toggle {
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* ── FILTERS ── */
     .filters {
       display: flex;
       gap: 10px;
@@ -28,12 +121,14 @@
       border: 1px solid #ccc;
     }
 
+    /* ── CANDIDATE TABLE ── */
     table {
       width: 100%;
       border-collapse: collapse;
       background: white;
       border-radius: 10px;
       overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
     }
 
     th, td {
@@ -49,9 +144,12 @@
     textarea {
       width: 100%;
       border-radius: 5px;
+      border: 1px solid #ddd;
+      padding: 5px;
+      box-sizing: border-box;
     }
 
-    button {
+    .btn-save {
       padding: 6px 10px;
       background: #28a745;
       color: white;
@@ -59,6 +157,8 @@
       border-radius: 5px;
       cursor: pointer;
     }
+
+    .btn-save:hover { background: #1e7e34; }
   </style>
 </head>
 
@@ -66,6 +166,41 @@
 
 <h2>Recruiter Dashboard</h2>
 
+<!-- ════════════════════════════════
+     📋 ROLE MANAGER
+════════════════════════════════ -->
+<div class="role-manager">
+  <h3>📋 Manage Open Roles</h3>
+
+  <div class="role-add-form">
+    <input type="text" id="newRoleName" placeholder="Role Name (e.g. Senior QA Engineer)">
+    <input type="text" id="newReqId"    placeholder="Req ID (e.g. SDET_003)">
+    <select id="newRoleStatus">
+      <option value="Active">Active</option>
+      <option value="Inactive">Inactive</option>
+      <option value="Enough Pipeline">Enough Pipeline</option>
+    </select>
+    <button class="btn-add-role" onclick="addRole()">+ Add Role</button>
+  </div>
+
+  <div class="role-msg" id="roleMsg"></div>
+
+  <table class="role-list-table">
+    <thead>
+      <tr>
+        <th>Role Name</th>
+        <th>Req ID</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="roleTableBody"></tbody>
+  </table>
+</div>
+
+<!-- ════════════════════════════════
+     🔍 CANDIDATE FILTERS
+════════════════════════════════ -->
 <div class="filters">
   <input type="text" id="search" placeholder="Search name/email">
 
@@ -94,57 +229,73 @@
   </select>
 </div>
 
+<!-- ════════════════════════════════
+     👥 CANDIDATE TABLE
+════════════════════════════════ -->
 <table>
   <thead>
     <tr>
       <th>Name</th>
       <th>Email</th>
-      <th>Role</th>
+      <th>Role Applied</th>
       <th>Status</th>
       <th>Notes</th>
-      <th>Feedback</th>
+      <th>L1 Feedback</th>
       <th>Save</th>
     </tr>
   </thead>
   <tbody id="tableBody"></tbody>
 </table>
 
+
 <script>
+const BASE_URL = "https://mini-ats-0dm3.onrender.com";
 
 let allData = [];
 
-fetch("http://localhost:5000/candidates")
-  .then(res => res.json())
-  .then(data => {
-    allData = data;
+// ══════════════════════════════
+// LOAD CANDIDATES
+// ══════════════════════════════
+function loadCandidates() {
+  fetch(`${BASE_URL}/candidates`)
+    .then(res => res.json())
+    .then(data => {
+      allData = data;
 
-    // Populate role dropdown dynamically
-    let roles = [...new Set(data.map(d => d.Role).filter(Boolean))];
-    let roleSelect = document.getElementById("roleFilter");
+      // Populate role filter from candidate data
+      let roles = [...new Set(data.map(d => d.Role).filter(Boolean))];
+      let roleSelect = document.getElementById("roleFilter");
+      roleSelect.innerHTML = '<option value="">All Roles</option>';
+      roles.forEach(role => {
+        let opt = document.createElement("option");
+        opt.text = role;
+        opt.value = role;
+        roleSelect.appendChild(opt);
+      });
 
-    roles.forEach(role => {
-      let option = document.createElement("option");
-      option.text = role;
-      option.value = role;
-      roleSelect.appendChild(option);
+      renderTable(data);
     });
+}
 
-    renderTable(data);
-  });
-
-
+// ══════════════════════════════
+// RENDER CANDIDATE TABLE
+// ══════════════════════════════
 function renderTable(data) {
   let tbody = document.getElementById("tableBody");
   tbody.innerHTML = "";
+
+  if (data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;padding:20px;">No candidates found</td></tr>';
+    return;
+  }
 
   data.forEach(row => {
     let tr = document.createElement("tr");
 
     tr.innerHTML = `
-      <td>${row.Name}</td>
-      <td>${row.Email}</td>
+      <td>${row.Name || ""}</td>
+      <td>${row.Email || ""}</td>
       <td>${row.Role || ""}</td>
-
       <td>
         <select>
           <option>New</option>
@@ -158,18 +309,16 @@ function renderTable(data) {
           <option>Offer Accepted</option>
         </select>
       </td>
-
       <td><textarea rows="2">${row.Notes || ""}</textarea></td>
       <td><textarea rows="2">${row["L1 Feedback"] || ""}</textarea></td>
-
-      <td><button>Save</button></td>
+      <td><button class="btn-save">Save</button></td>
     `;
 
     let select = tr.querySelector("select");
     select.value = row.Status || "New";
 
-    tr.querySelector("button").onclick = () => {
-      fetch("http://localhost:5000/update", {
+    tr.querySelector(".btn-save").onclick = () => {
+      fetch(`${BASE_URL}/update`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
@@ -179,35 +328,136 @@ function renderTable(data) {
           l1_feedback: tr.children[5].querySelector("textarea").value
         })
       })
-      .then(() => alert("Updated"));
+      .then(res => res.json())
+      .then(() => {
+        tr.querySelector(".btn-save").textContent = "✅ Saved";
+        setTimeout(() => { tr.querySelector(".btn-save").textContent = "Save"; }, 2000);
+      });
     };
 
     tbody.appendChild(tr);
   });
 }
 
-
-// 🔍 FILTER LOGIC
+// ══════════════════════════════
+// FILTER LOGIC
+// ══════════════════════════════
 document.querySelectorAll("#search, #roleFilter, #statusFilter, #typeFilter")
-.forEach(el => el.addEventListener("input", applyFilters));
+  .forEach(el => el.addEventListener("input", applyFilters));
 
 function applyFilters() {
   let search = document.getElementById("search").value.toLowerCase();
-  let role = document.getElementById("roleFilter").value;
+  let role   = document.getElementById("roleFilter").value;
   let status = document.getElementById("statusFilter").value;
-  let type = document.getElementById("typeFilter").value;
+  let type   = document.getElementById("typeFilter").value;
 
   let filtered = allData.filter(row => {
     return (
       (row.Name?.toLowerCase().includes(search) || row.Email?.toLowerCase().includes(search)) &&
-      (!role || row.Role === role) &&
+      (!role   || row.Role === role) &&
       (!status || row.Status === status) &&
-      (!type || row["Role Type"] === type)
+      (!type   || row["Role Type"] === type)
     );
   });
 
   renderTable(filtered);
 }
+
+// ══════════════════════════════
+// LOAD ROLES TABLE
+// ══════════════════════════════
+function loadRoles() {
+  fetch(`${BASE_URL}/all_roles`)
+    .then(res => res.json())
+    .then(roles => {
+      let tbody = document.getElementById("roleTableBody");
+      tbody.innerHTML = "";
+
+      if (roles.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:#999;padding:10px;">No roles added yet</td></tr>';
+        return;
+      }
+
+      roles.forEach(role => {
+        let status    = role["Status"] || "Active";
+        let badgeClass = status === "Active" ? "status-active"
+                       : status === "Enough Pipeline" ? "status-enough"
+                       : "status-inactive";
+
+        let nextStatus = status === "Active" ? "Inactive" : "Active";
+        let btnLabel   = status === "Active" ? "Deactivate" : "Activate";
+        let btnColor   = status === "Active" ? "#dc3545" : "#28a745";
+
+        let tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${role["Role Name"] || ""}</td>
+          <td><strong>${role["Req ID"] || ""}</strong></td>
+          <td><span class="status-badge ${badgeClass}">${status}</span></td>
+          <td>
+            <button class="btn-toggle" style="background:${btnColor};color:white;"
+              onclick="toggleRoleStatus('${role["Req ID"]}', '${nextStatus}')">
+              ${btnLabel}
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    });
+}
+
+// ══════════════════════════════
+// ADD ROLE
+// ══════════════════════════════
+function addRole() {
+  let roleName = document.getElementById("newRoleName").value.trim();
+  let reqId    = document.getElementById("newReqId").value.trim();
+  let status   = document.getElementById("newRoleStatus").value;
+  let msgEl    = document.getElementById("roleMsg");
+
+  if (!roleName || !reqId) {
+    msgEl.style.color = "#dc3545";
+    msgEl.textContent = "⚠️ Both Role Name and Req ID are required.";
+    return;
+  }
+
+  fetch(`${BASE_URL}/add_role`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ role_name: roleName, req_id: reqId, status: status })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.error) {
+      msgEl.style.color = "#dc3545";
+      msgEl.textContent = "❌ " + data.error;
+    } else {
+      msgEl.style.color = "#28a745";
+      msgEl.textContent = data.message;
+      document.getElementById("newRoleName").value = "";
+      document.getElementById("newReqId").value    = "";
+      loadRoles();
+    }
+  });
+}
+
+// ══════════════════════════════
+// TOGGLE ROLE STATUS
+// ══════════════════════════════
+function toggleRoleStatus(reqId, newStatus) {
+  fetch(`${BASE_URL}/update_role`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ req_id: reqId, status: newStatus })
+  })
+  .then(res => res.json())
+  .then(() => loadRoles());
+}
+
+// ══════════════════════════════
+// INIT
+// ══════════════════════════════
+loadCandidates();
+loadRoles();
 
 </script>
 
