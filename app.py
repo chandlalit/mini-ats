@@ -8,6 +8,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from PyPDF2 import PdfReader
 import docx
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -196,16 +197,22 @@ Resume:
         # ==============================
         # 📊 WRITE TO SHEET
         # ==============================
-        sheet.append_row([
-            safe_str(name),
-            safe_str(email),
-            safe_str(data.get("phone")),
-            safe_str(data.get("linkedin")),
-            safe_str(data.get("location")),
-            safe_str(data.get("education_year")),
-            safe_str(data.get("skills")),
-            safe_str(data.get("experience")),
-        ])
+            sheet.append_row([
+                safe_str(name),
+                safe_str(email),
+                safe_str(data.get("phone")),
+                safe_str(data.get("linkedin")),
+                safe_str(data.get("location")),
+                safe_str(data.get("education_year")),
+                safe_str(data.get("skills")),
+                safe_str(data.get("experience")),
+                "New",
+                "",
+                datetime.now().strftime("%Y-%m-%d"),
+                "",
+                "",
+                "",
+            ])
 
         print("✅ DATA WRITTEN")
 
