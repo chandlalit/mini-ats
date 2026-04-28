@@ -31,9 +31,7 @@ body {
   margin: 0 auto 15px;
 }
 
-h2 {
-  text-align: center;
-}
+h2 { text-align: center; }
 
 .subtitle {
   text-align: center;
@@ -47,6 +45,7 @@ input {
   margin: 15px 0;
   border-radius: 8px;
   border: 1px solid #ddd;
+  box-sizing: border-box;
 }
 
 button {
@@ -67,7 +66,6 @@ button {
   display: none;
 }
 
-/* STEP */
 .step {
   padding: 14px;
   margin: 10px 0;
@@ -76,7 +74,6 @@ button {
   cursor: pointer;
 }
 
-/* COLORS */
 .completed {
   background: #f0fdf4;
   border-left: 4px solid #22c55e;
@@ -88,7 +85,6 @@ button {
   font-weight: 600;
 }
 
-/* BADGE */
 .badge {
   background: #2563eb;
   color: white;
@@ -98,7 +94,6 @@ button {
   margin-left: 6px;
 }
 
-/* FEEDBACK */
 .feedback {
   display: none;
   margin-top: 12px;
@@ -111,7 +106,6 @@ button {
   text-align: justify;
 }
 
-/* RATINGS */
 .rating-box {
   margin-top: 12px;
   padding: 10px;
@@ -126,9 +120,7 @@ button {
   font-size: 13px;
 }
 
-.stars {
-  color: #fbbf24;
-}
+.stars { color: #fbbf24; }
 
 .disclaimer {
   margin-top: 15px;
@@ -140,33 +132,30 @@ button {
 </head>
 
 <body>
-
 <div class="container">
 
-<img src="logo.png" class="logo">
+  <img src="logo.png" class="logo">
+  <h2>Track Your Application</h2>
+  <p class="subtitle">Enter your email to check your application status</p>
 
-<h2>Track Your Application</h2>
-<p class="subtitle">Enter your email to check your application status</p>
+  <input type="email" id="email" placeholder="Enter your email">
+  <button onclick="track()">Check Status</button>
 
-<input type="email" id="email" placeholder="Enter your email">
-<button onclick="track()">Check Status</button>
+  <div class="result" id="result">
+    <p><strong>Name:</strong> <span id="name"></span></p>
+    <p><strong>Status:</strong> <span id="status"></span></p>
+    <div id="timeline"></div>
+  </div>
 
-<div class="result" id="result">
-  <p><strong>Name:</strong> <span id="name"></span></p>
-  <p><strong>Status:</strong> <span id="status"></span></p>
-
-  <div id="timeline"></div>
-</div>
-
-<div class="disclaimer">
-This is not an official Accion Labs application page.
-</div>
+  <div class="disclaimer">
+    This is not an official Accion Labs application page.
+  </div>
 
 </div>
 
 <script>
+const BASE_URL = "https://mini-ats-0dm3.onrender.com";
 
-// ⭐ stars
 function getStars(value) {
   let full = Math.floor(value);
   let half = value % 1 >= 0.5;
@@ -175,111 +164,84 @@ function getStars(value) {
   return stars.padEnd(5, "☆");
 }
 
-// extract ratings
 function extractRatings(text) {
   let ratings = {};
   let regex = /([A-Za-z +\/]+):\s*(\d(\.\d)?)/g;
   let match;
-
   while ((match = regex.exec(text)) !== null) {
     ratings[match[1].trim()] = parseFloat(match[2]);
   }
-
   return ratings;
 }
 
 function track() {
   let email = document.getElementById("email").value;
 
-  fetch(`http://localhost:5000/track?email=${email}`)
+  fetch(`${BASE_URL}/track?email=${encodeURIComponent(email)}`)
     .then(res => res.json())
     .then(data => {
-
       document.getElementById("result").style.display = "block";
-      document.getElementById("name").innerText = data.name || "";
+      document.getElementById("name").innerText   = data.name || "";
       document.getElementById("status").innerText = data.status || "";
 
       const steps = [
-        "New",
-        "Screening",
-        "L1 Interview Scheduled",
-        "L1 Shortlisted",
-        "Sent to Client",
-        "Client Interview",
-        "Client Select",
-        "Offer Released",
-        "Offer Accepted"
+        "New", "Screening", "L1 Interview Scheduled", "L1 Shortlisted",
+        "Sent to Client", "Client Interview", "Client Select",
+        "Offer Released", "Offer Accepted"
       ];
 
       let currentIndex = steps.indexOf(data.status);
       let html = "";
 
       steps.forEach((step, index) => {
-
         let className = index < currentIndex ? "completed" : "";
-        if(index === currentIndex) className = "current";
-
+        if (index === currentIndex) className = "current";
         let isCurrent = index === currentIndex;
 
         let feedbackText = "";
-        let ratingsHTML = "";
+        let ratingsHTML  = "";
 
-        if (
-          isCurrent &&
-          (
-            step === "L1 Interview Scheduled" ||
-            step === "L1 Shortlisted"
-          )
-        ) {
+        if (isCurrent && (step === "L1 Interview Scheduled" || step === "L1 Shortlisted")) {
           feedbackText = data.l1_feedback || "";
-
           if (feedbackText) {
             let ratings = extractRatings(feedbackText);
-
             if (Object.keys(ratings).length > 0) {
               ratingsHTML += `<div class="rating-box">`;
-
               for (let skill in ratings) {
                 ratingsHTML += `
                   <div class="rating-row">
                     <span>${skill}</span>
                     <span class="stars">${getStars(ratings[skill])}</span>
-                  </div>
-                `;
+                  </div>`;
               }
-
               ratingsHTML += `</div>`;
             }
           }
         }
 
-        html += `
-          <div class="step ${className}" onclick="toggleFeedback(this)">
-            ${step} ${isCurrent ? '<span class="badge">Current</span>' : ''}
-        `;
+        html += `<div class="step ${className}" onclick="toggleFeedback(this)">
+          ${step} ${isCurrent ? '<span class="badge">Current</span>' : ''}`;
 
         if (feedbackText) {
-          html += `
-            <div class="feedback">
-              ${feedbackText}
-              ${ratingsHTML}
-            </div>
-          `;
+          html += `<div class="feedback">${feedbackText}${ratingsHTML}</div>`;
         }
 
         html += `</div>`;
       });
 
       document.getElementById("timeline").innerHTML = html;
+    })
+    .catch(() => {
+      document.getElementById("result").style.display = "block";
+      document.getElementById("name").innerText   = "";
+      document.getElementById("status").innerText = "Could not connect. Please try again.";
     });
 }
 
 function toggleFeedback(el) {
   let feedback = el.querySelector(".feedback");
   if (!feedback) return;
-
-  feedback.style.display =
-    feedback.style.display === "block" ? "none" : "block";
+  feedback.style.display = feedback.style.display === "block" ? "none" : "block";
 }
 </script>
 
