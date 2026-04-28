@@ -7,8 +7,8 @@ import requests
 import gspread
 from google.oauth2.service_account import Credentials
 from PyPDF2 import PdfReader
-import docx
 from datetime import datetime
+import docx
 
 app = Flask(__name__)
 CORS(app)
@@ -58,9 +58,9 @@ print("✅ Connected to Google Sheet")
 
 # ==============================
 # 🧹 SAFE STRING HELPER
+# Converts any AI value (dict/list/None) to a plain string
 # ==============================
 def safe_str(value):
-    """Convert any AI output value safely to a plain string for Google Sheets."""
     if value is None:
         return ""
     if isinstance(value, list):
@@ -74,6 +74,25 @@ def safe_str(value):
     if isinstance(value, dict):
         return ", ".join(f"{k}: {v}" for k, v in value.items() if v)
     return str(value)
+
+
+# ==============================
+# 📧 CLEAN EMAIL HELPER
+# Handles markdown format like [email](mailto:email)
+# ==============================
+def clean_email(value):
+    text = safe_str(value)
+    match = re.search(r'[\w\.\+\-]+@[\w\.\-]+\.\w+', text)
+    return match.group(0) if match else text
+
+
+# ==============================
+# 📍 FIND NEXT EMPTY ROW
+# Ignores rows with only dropdown validation (no real data)
+# ==============================
+def get_next_row():
+    col_a = sheet.col_values(1)  # Only look at column A (Name)
+    return len(col_a) + 1        # First row after last real entry
 
 
 # ==============================
@@ -113,25 +132,28 @@ def upload_file():
         if not file:
             return "No file uploaded"
 
-        filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+        # Sanitize filename
+        safe_filename = re.sub(r'[^\w\-.]', '_', file.filename)
+        filepath = os.path.join(UPLOAD_FOLDER, safe_filename)
         file.save(filepath)
 
-        print("📄 FILE SAVED")
+        print("📄 FILE SAVED:", safe_filename)
 
-        text = extract_text(filepath, file.filename)
+        text = extract_text(filepath, safe_filename)
 
         if not text.strip():
             return "Could not read file"
 
-        print("📄 TEXT EXTRACTED")
+        print("📄 TEXT EXTRACTED, length:", len(text))
 
         # ==============================
         # 🤖 AI CALL
         # ==============================
         prompt = f"""
 Extract the following details from the resume.
-Return ONLY valid JSON. All values must be plain strings or a flat list of strings for skills.
-Do NOT return nested objects or lists of objects.
+Return ONLY a valid JSON object. 
+All values must be plain strings. Skills must be a flat list of strings.
+Do NOT use nested objects or lists of objects for any field.
 
 {{
   "name": "",
@@ -141,7 +163,7 @@ Do NOT return nested objects or lists of objects.
   "location": "",
   "education_year": "",
   "skills": ["skill1", "skill2"],
-  "experience": "brief summary as plain text"
+  "experience": "plain text summary of total experience"
 }}
 
 Resume:
@@ -163,12 +185,13 @@ Resume:
             )
         except requests.exceptions.Timeout:
             print("❌ AI TIMEOUT")
-            return "AI took too long to respond. Please try again."
+            return "AI took too long. Please try again."
 
         result = response.json()
-        print("🔍 RAW AI:", result)
+        print("🔍 RAW AI RESPONSE:", result)
 
         if "choices" not in result:
+            print("❌ No choices in AI response")
             return "AI failed"
 
         output = result['choices'][0]['message']['content']
@@ -180,46 +203,62 @@ Resume:
         json_match = re.search(r'\{.*\}', output, re.DOTALL)
 
         if not json_match:
+            print("❌ No JSON found in AI output")
             return "AI parsing failed"
 
         data = json.loads(json_match.group(0))
-        print("✅ PARSED:", data)
+        print("✅ PARSED DATA:", data)
 
         # ==============================
         # ✅ VALIDATION
         # ==============================
-        name = data.get("name") or data.get("Name")
-        email = data.get("email") or data.get("Email")
+        name  = safe_str(data.get("name") or data.get("Name"))
+        email = clean_email(data.get("email") or data.get("Email"))
 
         if not name or not email:
+            print("❌ Missing name or email")
             return "Invalid resume data"
 
         # ==============================
         # 📊 WRITE TO SHEET
+        # Uses col A to find next real empty row,
+        # bypassing dropdown-only rows
         # ==============================
-            sheet.append_row([
-                safe_str(name),
-                safe_str(email),
+        next_row = get_next_row()
+        print(f"📝 Writing to row {next_row}")
+
+        sheet.update(
+            f'A{next_row}:N{next_row}',
+            [[
+                name,
+                email,
                 safe_str(data.get("phone")),
                 safe_str(data.get("linkedin")),
                 safe_str(data.get("location")),
                 safe_str(data.get("education_year")),
                 safe_str(data.get("skills")),
                 safe_str(data.get("experience")),
-                "New",
-                "",
-                datetime.now().strftime("%Y-%m-%d"),
-                "",
-                "",
-                "",
-            ])
+                "New",                                  # Status
+                "",                                     # Notes
+                datetime.now().strftime("%Y-%m-%d"),    # Date Added
+                "",                                     # L1 Feedback
+                "",                                     # Role
+                "",                                     # Role Type
+            ]]
+        )
 
-        print("✅ DATA WRITTEN")
+        print(f"✅ DATA WRITTEN to row {next_row}")
+
+        # Clean up temp file
+        try:
+            os.remove(filepath)
+        except:
+            pass
 
         return "Uploaded successfully"
 
     except Exception as e:
-        print("❌ ERROR:", e)
+        print("❌ ERROR:", str(e))
         return "Internal Server Error"
 
 
@@ -228,7 +267,7 @@ Resume:
 # ==============================
 @app.route('/track', methods=['GET'])
 def track_application():
-    email = request.args.get('email')
+    email = request.args.get('email', '').strip().lower()
 
     if not email:
         return jsonify({"status": "Enter email"})
@@ -236,7 +275,8 @@ def track_application():
     records = sheet.get_all_records()
 
     for row in records:
-        if row.get("Email", "").lower() == email.lower():
+        row_email = clean_email(row.get("Email", "")).lower()
+        if row_email == email:
             return jsonify({
                 "name": row.get("Name", ""),
                 "status": row.get("Status", "New"),
@@ -248,24 +288,28 @@ def track_application():
 
 
 # ==============================
-# 📊 DASHBOARD APIs
+# 📊 DASHBOARD - GET ALL
 # ==============================
 @app.route('/candidates', methods=['GET'])
 def get_candidates():
     return jsonify(sheet.get_all_records())
 
 
+# ==============================
+# 📊 DASHBOARD - UPDATE
+# ==============================
 @app.route('/update', methods=['POST'])
 def update_candidate():
     data = request.json
-    email = data.get("email")
+    email = data.get("email", "").strip().lower()
 
     records = sheet.get_all_records()
 
     for i, row in enumerate(records):
-        if row.get("Email") == email:
+        row_email = clean_email(row.get("Email", "")).lower()
+        if row_email == email:
             row_number = i + 2
-            sheet.update_cell(row_number, 9, data.get("status", ""))
+            sheet.update_cell(row_number, 9,  data.get("status", ""))
             sheet.update_cell(row_number, 10, data.get("notes", ""))
             sheet.update_cell(row_number, 12, data.get("l1_feedback", ""))
             return jsonify({"message": "Updated"})
