@@ -51,7 +51,25 @@ if isinstance(creds_dict, str):
 
 creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
 client = gspread.authorize(creds)
-sheet = client.open_by_key("1UN6j6_AhW_XFe--kS7ZJU07XXDQHjwRABF6n1uVpxVQ").sheet1
+
+spreadsheet = client.open_by_key("1UN6j6_AhW_XFe--kS7ZJU07XXDQHjwRABF6n1uVpxVQ")
+sheet        = spreadsheet.sheet1
+
+# ==============================
+# 📋 ROLES TAB SETUP
+# Auto-creates header if Roles tab is empty
+# Columns: A=Role Name, B=Req ID, C=Status
+# ==============================
+try:
+    roles_sheet = spreadsheet.worksheet("Roles")
+    # If sheet is empty, add header row
+    if not roles_sheet.get_all_values():
+        roles_sheet.append_row(["Role Name", "Req ID", "Status"])
+        print("✅ Roles tab header created")
+except gspread.exceptions.WorksheetNotFound:
+    roles_sheet = spreadsheet.add_worksheet(title="Roles", rows=200, cols=5)
+    roles_sheet.append_row(["Role Name", "Req ID", "Status"])
+    print("✅ Roles tab created from scratch")
 
 print("✅ Connected to Google Sheet")
 
@@ -98,24 +116,110 @@ def get_next_row():
 # ==============================
 def extract_text(filepath, filename):
     text = ""
-
     if filename.lower().endswith(".pdf"):
         reader = PdfReader(filepath)
         for page in reader.pages:
             text += page.extract_text() or ""
-
     elif filename.lower().endswith(".docx"):
         doc = docx.Document(filepath)
         text = "\n".join([p.text for p in doc.paragraphs])
-
     else:
         try:
             with open(filepath, "r", errors="ignore") as f:
                 text = f.read()
         except:
             text = ""
-
     return text
+
+
+# ==============================
+# 📋 GET ROLES
+# Returns all Active roles for candidate dropdown
+# ==============================
+@app.route('/roles', methods=['GET'])
+def get_roles():
+    try:
+        records = roles_sheet.get_all_records()
+        roles = []
+        for row in records:
+            role_name = str(row.get("Role Name", "")).strip()
+            req_id    = str(row.get("Req ID", "")).strip()
+            status    = str(row.get("Status", "")).strip().lower()
+            if role_name and req_id and status == "active":
+                roles.append({
+                    "label": f"{role_name} - {req_id}",
+                    "value": f"{role_name} - {req_id}"
+                })
+        return jsonify(roles)
+    except Exception as e:
+        print("❌ Roles fetch error:", e)
+        return jsonify([])
+
+
+# ==============================
+# 📋 GET ALL ROLES (for dashboard management)
+# Returns all roles regardless of status
+# ==============================
+@app.route('/all_roles', methods=['GET'])
+def get_all_roles():
+    try:
+        records = roles_sheet.get_all_records()
+        return jsonify(records)
+    except Exception as e:
+        print("❌ All roles fetch error:", e)
+        return jsonify([])
+
+
+# ==============================
+# ➕ ADD ROLE (from dashboard)
+# ==============================
+@app.route('/add_role', methods=['POST'])
+def add_role():
+    try:
+        data      = request.json
+        role_name = data.get("role_name", "").strip()
+        req_id    = data.get("req_id", "").strip().upper()
+        status    = data.get("status", "Active").strip()
+
+        if not role_name or not req_id:
+            return jsonify({"error": "Role Name and Req ID are required"}), 400
+
+        # Check for duplicate Req ID
+        records = roles_sheet.get_all_records()
+        for row in records:
+            if str(row.get("Req ID", "")).strip().upper() == req_id:
+                return jsonify({"error": f"Req ID '{req_id}' already exists"}), 400
+
+        roles_sheet.append_row([role_name, req_id, status])
+        return jsonify({"message": f"✅ '{role_name} - {req_id}' added successfully"})
+
+    except Exception as e:
+        print("❌ Add role error:", e)
+        return jsonify({"error": "Failed to add role"}), 500
+
+
+# ==============================
+# 🔄 UPDATE ROLE STATUS (from dashboard)
+# ==============================
+@app.route('/update_role', methods=['POST'])
+def update_role():
+    try:
+        data   = request.json
+        req_id = data.get("req_id", "").strip().upper()
+        status = data.get("status", "").strip()
+
+        records = roles_sheet.get_all_records()
+        for i, row in enumerate(records):
+            if str(row.get("Req ID", "")).strip().upper() == req_id:
+                row_number = i + 2
+                roles_sheet.update_cell(row_number, 3, status)
+                return jsonify({"message": "Role status updated"})
+
+        return jsonify({"error": "Role not found"}), 404
+
+    except Exception as e:
+        print("❌ Update role error:", e)
+        return jsonify({"error": "Failed to update role"}), 500
 
 
 # ==============================
@@ -129,6 +233,9 @@ def upload_file():
         file = request.files.get('resume')
         if not file:
             return "No file uploaded"
+
+        selected_role = request.form.get("role", "")
+        print("🎯 Selected Role:", selected_role)
 
         safe_filename = re.sub(r'[^\w\-.]', '_', file.filename)
         filepath = os.path.join(UPLOAD_FOLDER, safe_filename)
@@ -217,7 +324,7 @@ Resume:
 
         # ==============================
         # 📊 WRITE TO SHEET
-        # ✅ FIXED: gspread v6 requires values FIRST, range SECOND
+        # gspread v6: values first, range second
         # ==============================
         next_row = get_next_row()
         print(f"📝 Writing to row {next_row}")
@@ -231,17 +338,16 @@ Resume:
             safe_str(data.get("education_year")),
             safe_str(data.get("skills")),
             safe_str(data.get("experience")),
-            "New",                                # Status
-            "",                                   # Notes
-            datetime.now().strftime("%Y-%m-%d"),  # Date Added
-            "",                                   # L1 Feedback
-            "",                                   # Role
-            "",                                   # Role Type
+            "New",                                # Col I  - Status
+            "",                                   # Col J  - Notes
+            datetime.now().strftime("%Y-%m-%d"),  # Col K  - Date Added
+            "",                                   # Col L  - L1 Feedback
+            selected_role,                        # Col M  - Role
+            "",                                   # Col N  - Role Type
         ]]
 
         sheet.update(row_data, f'A{next_row}:N{next_row}')
-
-        print(f"✅ DATA WRITTEN to row {next_row}")
+        print(f"✅ DATA WRITTEN to row {next_row}, Role: {selected_role}")
 
         # Clean up temp file
         try:
@@ -282,7 +388,7 @@ def track_application():
 
 
 # ==============================
-# 📊 DASHBOARD - GET ALL
+# 📊 DASHBOARD - GET ALL CANDIDATES
 # ==============================
 @app.route('/candidates', methods=['GET'])
 def get_candidates():
@@ -290,7 +396,7 @@ def get_candidates():
 
 
 # ==============================
-# 📊 DASHBOARD - UPDATE
+# 📊 DASHBOARD - UPDATE CANDIDATE
 # ==============================
 @app.route('/update', methods=['POST'])
 def update_candidate():
