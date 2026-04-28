@@ -57,12 +57,10 @@ sheet        = spreadsheet.sheet1
 
 # ==============================
 # 📋 ROLES TAB SETUP
-# Auto-creates header if Roles tab is empty
 # Columns: A=Role Name, B=Req ID, C=Status
 # ==============================
 try:
     roles_sheet = spreadsheet.worksheet("Roles")
-    # If sheet is empty, add header row
     if not roles_sheet.get_all_values():
         roles_sheet.append_row(["Role Name", "Req ID", "Status"])
         print("✅ Roles tab header created")
@@ -72,6 +70,30 @@ except gspread.exceptions.WorksheetNotFound:
     print("✅ Roles tab created from scratch")
 
 print("✅ Connected to Google Sheet")
+
+# ==============================
+# 📊 COLUMN MAP (update here if sheet changes)
+# ==============================
+# A=1  Name
+# B=2  Email
+# C=3  Phone
+# D=4  LinkedIn
+# E=5  Location
+# F=6  Education Year
+# G=7  Skills
+# H=8  Yrs of Exp
+# I=9  Summary
+# J=10 Domain
+# K=11 Status
+# L=12 Notes
+# M=13 Date Added
+# N=14 L1 Feedback
+# O=15 Role
+# P=16 Role Type
+
+COL_STATUS      = 11
+COL_NOTES       = 12
+COL_L1_FEEDBACK = 14
 
 
 # ==============================
@@ -104,7 +126,6 @@ def clean_email(value):
 
 # ==============================
 # 📍 FIND NEXT EMPTY ROW
-# Only checks column A to ignore dropdown-only rows
 # ==============================
 def get_next_row():
     col_a = sheet.col_values(1)
@@ -133,8 +154,7 @@ def extract_text(filepath, filename):
 
 
 # ==============================
-# 📋 GET ROLES
-# Returns all Active roles for candidate dropdown
+# 📋 GET ACTIVE ROLES (for candidate dropdown)
 # ==============================
 @app.route('/roles', methods=['GET'])
 def get_roles():
@@ -158,7 +178,6 @@ def get_roles():
 
 # ==============================
 # 📋 GET ALL ROLES (for dashboard management)
-# Returns all roles regardless of status
 # ==============================
 @app.route('/all_roles', methods=['GET'])
 def get_all_roles():
@@ -171,7 +190,7 @@ def get_all_roles():
 
 
 # ==============================
-# ➕ ADD ROLE (from dashboard)
+# ➕ ADD ROLE
 # ==============================
 @app.route('/add_role', methods=['POST'])
 def add_role():
@@ -184,7 +203,6 @@ def add_role():
         if not role_name or not req_id:
             return jsonify({"error": "Role Name and Req ID are required"}), 400
 
-        # Check for duplicate Req ID
         records = roles_sheet.get_all_records()
         for row in records:
             if str(row.get("Req ID", "")).strip().upper() == req_id:
@@ -199,7 +217,7 @@ def add_role():
 
 
 # ==============================
-# 🔄 UPDATE ROLE STATUS (from dashboard)
+# 🔄 UPDATE ROLE STATUS
 # ==============================
 @app.route('/update_role', methods=['POST'])
 def update_role():
@@ -251,12 +269,18 @@ def upload_file():
 
         # ==============================
         # 🤖 AI CALL
+        # Improved prompt for better data extraction
         # ==============================
         prompt = f"""
-Extract the following details from the resume.
-Return ONLY a valid JSON object.
-All values must be plain strings. Skills must be a flat list of strings.
-Do NOT use nested objects or lists of objects for any field.
+You are a resume parser. Extract the following fields from the resume below.
+Return ONLY a valid JSON object — no extra text, no markdown, no explanation.
+
+Rules:
+- "education_year": Extract the most recent graduation year as a 4-digit year string (e.g. "2019"). Look for degree completion dates, graduation years, or batch years. If multiple degrees, return the most recent year.
+- "yrs_of_exp": Calculate total professional work experience as a short string like "6 years" or "8.5 years". Add up all job durations.
+- "summary": Write 2 sentences max describing their seniority level, main tech stack, and strongest skills.
+- "domain": List industries they have worked in (e.g. "Finance, Healthcare, Retail"). If not clear, write "Not specified".
+- "skills": Flat list of technical skills only. No soft skills.
 
 {{
   "name": "",
@@ -266,7 +290,9 @@ Do NOT use nested objects or lists of objects for any field.
   "location": "",
   "education_year": "",
   "skills": ["skill1", "skill2"],
-  "experience": "plain text summary of total experience"
+  "yrs_of_exp": "",
+  "summary": "",
+  "domain": ""
 }}
 
 Resume:
@@ -324,29 +350,32 @@ Resume:
 
         # ==============================
         # 📊 WRITE TO SHEET
-        # gspread v6: values first, range second
+        # Col:  A      B      C       D          E          F                G          H              I           J         K       L       M                             N    O              P
+        #       Name   Email  Phone   LinkedIn   Location   Education Year   Skills     Yrs of Exp     Summary     Domain    Status  Notes   Date Added                    L1   Role           Role Type
         # ==============================
         next_row = get_next_row()
         print(f"📝 Writing to row {next_row}")
 
         row_data = [[
-            name,
-            email,
-            safe_str(data.get("phone")),
-            safe_str(data.get("linkedin")),
-            safe_str(data.get("location")),
-            safe_str(data.get("education_year")),
-            safe_str(data.get("skills")),
-            safe_str(data.get("experience")),
-            "New",                                # Col I  - Status
-            "",                                   # Col J  - Notes
-            datetime.now().strftime("%Y-%m-%d"),  # Col K  - Date Added
-            "",                                   # Col L  - L1 Feedback
-            selected_role,                        # Col M  - Role
-            "",                                   # Col N  - Role Type
+            name,                                           # A - Name
+            email,                                          # B - Email
+            safe_str(data.get("phone")),                   # C - Phone
+            safe_str(data.get("linkedin")),                # D - LinkedIn
+            safe_str(data.get("location")),                # E - Location
+            safe_str(data.get("education_year")),          # F - Education Year
+            safe_str(data.get("skills")),                  # G - Skills
+            safe_str(data.get("yrs_of_exp")),              # H - Yrs of Exp
+            safe_str(data.get("summary")),                 # I - Summary
+            safe_str(data.get("domain")),                  # J - Domain
+            "New",                                          # K - Status
+            "",                                             # L - Notes
+            datetime.now().strftime("%Y-%m-%d"),            # M - Date Added
+            "",                                             # N - L1 Feedback
+            selected_role,                                  # O - Role
+            "",                                             # P - Role Type
         ]]
 
-        sheet.update(row_data, f'A{next_row}:N{next_row}')
+        sheet.update(row_data, f'A{next_row}:P{next_row}')
         print(f"✅ DATA WRITTEN to row {next_row}, Role: {selected_role}")
 
         # Clean up temp file
@@ -409,9 +438,9 @@ def update_candidate():
         row_email = clean_email(row.get("Email", "")).lower()
         if row_email == email:
             row_number = i + 2
-            sheet.update_cell(row_number, 9,  data.get("status", ""))
-            sheet.update_cell(row_number, 10, data.get("notes", ""))
-            sheet.update_cell(row_number, 12, data.get("l1_feedback", ""))
+            sheet.update_cell(row_number, COL_STATUS,      data.get("status", ""))
+            sheet.update_cell(row_number, COL_NOTES,       data.get("notes", ""))
+            sheet.update_cell(row_number, COL_L1_FEEDBACK, data.get("l1_feedback", ""))
             return jsonify({"message": "Updated"})
 
     return jsonify({"error": "Not found"}), 404
