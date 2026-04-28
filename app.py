@@ -58,7 +58,6 @@ print("✅ Connected to Google Sheet")
 
 # ==============================
 # 🧹 SAFE STRING HELPER
-# Converts any AI value (dict/list/None) to a plain string
 # ==============================
 def safe_str(value):
     if value is None:
@@ -78,7 +77,6 @@ def safe_str(value):
 
 # ==============================
 # 📧 CLEAN EMAIL HELPER
-# Handles markdown format like [email](mailto:email)
 # ==============================
 def clean_email(value):
     text = safe_str(value)
@@ -88,11 +86,11 @@ def clean_email(value):
 
 # ==============================
 # 📍 FIND NEXT EMPTY ROW
-# Ignores rows with only dropdown validation (no real data)
+# Only checks column A to ignore dropdown-only rows
 # ==============================
 def get_next_row():
-    col_a = sheet.col_values(1)  # Only look at column A (Name)
-    return len(col_a) + 1        # First row after last real entry
+    col_a = sheet.col_values(1)
+    return len(col_a) + 1
 
 
 # ==============================
@@ -132,11 +130,9 @@ def upload_file():
         if not file:
             return "No file uploaded"
 
-        # Sanitize filename
         safe_filename = re.sub(r'[^\w\-.]', '_', file.filename)
         filepath = os.path.join(UPLOAD_FOLDER, safe_filename)
         file.save(filepath)
-
         print("📄 FILE SAVED:", safe_filename)
 
         text = extract_text(filepath, safe_filename)
@@ -151,7 +147,7 @@ def upload_file():
         # ==============================
         prompt = f"""
 Extract the following details from the resume.
-Return ONLY a valid JSON object. 
+Return ONLY a valid JSON object.
 All values must be plain strings. Skills must be a flat list of strings.
 Do NOT use nested objects or lists of objects for any field.
 
@@ -221,31 +217,29 @@ Resume:
 
         # ==============================
         # 📊 WRITE TO SHEET
-        # Uses col A to find next real empty row,
-        # bypassing dropdown-only rows
+        # ✅ FIXED: gspread v6 requires values FIRST, range SECOND
         # ==============================
         next_row = get_next_row()
         print(f"📝 Writing to row {next_row}")
 
-        sheet.update(
-            f'A{next_row}:N{next_row}',
-            [[
-                name,
-                email,
-                safe_str(data.get("phone")),
-                safe_str(data.get("linkedin")),
-                safe_str(data.get("location")),
-                safe_str(data.get("education_year")),
-                safe_str(data.get("skills")),
-                safe_str(data.get("experience")),
-                "New",                                  # Status
-                "",                                     # Notes
-                datetime.now().strftime("%Y-%m-%d"),    # Date Added
-                "",                                     # L1 Feedback
-                "",                                     # Role
-                "",                                     # Role Type
-            ]]
-        )
+        row_data = [[
+            name,
+            email,
+            safe_str(data.get("phone")),
+            safe_str(data.get("linkedin")),
+            safe_str(data.get("location")),
+            safe_str(data.get("education_year")),
+            safe_str(data.get("skills")),
+            safe_str(data.get("experience")),
+            "New",                                # Status
+            "",                                   # Notes
+            datetime.now().strftime("%Y-%m-%d"),  # Date Added
+            "",                                   # L1 Feedback
+            "",                                   # Role
+            "",                                   # Role Type
+        ]]
+
+        sheet.update(row_data, f'A{next_row}:N{next_row}')
 
         print(f"✅ DATA WRITTEN to row {next_row}")
 
