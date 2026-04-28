@@ -63,8 +63,6 @@ def safe_str(value):
     if value is None:
         return ""
     if isinstance(value, list):
-        # e.g. skills list → "Python, Java, SQL"
-        # e.g. experience list of dicts → join as readable text
         parts = []
         for item in value:
             if isinstance(item, dict):
@@ -149,17 +147,22 @@ Resume:
 {text[:4000]}
 """
 
-        response = requests.post(
-            url="https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "deepseek/deepseek-chat",
-                "messages": [{"role": "user", "content": prompt}]
-            }
-        )
+        try:
+            response = requests.post(
+                url="https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "openai/gpt-3.5-turbo",
+                    "messages": [{"role": "user", "content": prompt}]
+                },
+                timeout=30
+            )
+        except requests.exceptions.Timeout:
+            print("❌ AI TIMEOUT")
+            return "AI took too long to respond. Please try again."
 
         result = response.json()
         print("🔍 RAW AI:", result)
@@ -211,6 +214,56 @@ Resume:
     except Exception as e:
         print("❌ ERROR:", e)
         return "Internal Server Error"
+
+
+# ==============================
+# 🔍 TRACK ROUTE
+# ==============================
+@app.route('/track', methods=['GET'])
+def track_application():
+    email = request.args.get('email')
+
+    if not email:
+        return jsonify({"status": "Enter email"})
+
+    records = sheet.get_all_records()
+
+    for row in records:
+        if row.get("Email", "").lower() == email.lower():
+            return jsonify({
+                "name": row.get("Name", ""),
+                "status": row.get("Status", "New"),
+                "notes": row.get("Notes", ""),
+                "l1_feedback": row.get("L1 Feedback", "")
+            })
+
+    return jsonify({"status": "Not Found"})
+
+
+# ==============================
+# 📊 DASHBOARD APIs
+# ==============================
+@app.route('/candidates', methods=['GET'])
+def get_candidates():
+    return jsonify(sheet.get_all_records())
+
+
+@app.route('/update', methods=['POST'])
+def update_candidate():
+    data = request.json
+    email = data.get("email")
+
+    records = sheet.get_all_records()
+
+    for i, row in enumerate(records):
+        if row.get("Email") == email:
+            row_number = i + 2
+            sheet.update_cell(row_number, 9, data.get("status", ""))
+            sheet.update_cell(row_number, 10, data.get("notes", ""))
+            sheet.update_cell(row_number, 12, data.get("l1_feedback", ""))
+            return jsonify({"message": "Updated"})
+
+    return jsonify({"error": "Not found"}), 404
 
 
 # ==============================
