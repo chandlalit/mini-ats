@@ -54,6 +54,29 @@ sheet = client.open_by_key("1UN6j6_AhW_XFe--kS7ZJU07XXDQHjwRABF6n1uVpxVQ").sheet
 
 print("✅ Connected to Google Sheet")
 
+
+# ==============================
+# 🧹 SAFE STRING HELPER
+# ==============================
+def safe_str(value):
+    """Convert any AI output value safely to a plain string for Google Sheets."""
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        # e.g. skills list → "Python, Java, SQL"
+        # e.g. experience list of dicts → join as readable text
+        parts = []
+        for item in value:
+            if isinstance(item, dict):
+                parts.append(", ".join(str(v) for v in item.values() if v))
+            else:
+                parts.append(str(item))
+        return " | ".join(parts)
+    if isinstance(value, dict):
+        return ", ".join(f"{k}: {v}" for k, v in value.items() if v)
+    return str(value)
+
+
 # ==============================
 # 📄 TEXT EXTRACTION
 # ==============================
@@ -78,8 +101,9 @@ def extract_text(filepath, filename):
 
     return text
 
+
 # ==============================
-# 🚀 UPLOAD ROUTE (FINAL)
+# 🚀 UPLOAD ROUTE
 # ==============================
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -106,18 +130,20 @@ def upload_file():
         # 🤖 AI CALL
         # ==============================
         prompt = f"""
-Extract the following details from the resume:
+Extract the following details from the resume.
+Return ONLY valid JSON. All values must be plain strings or a flat list of strings for skills.
+Do NOT return nested objects or lists of objects.
 
-- name
-- email
-- phone
-- linkedin
-- location
-- education_year
-- skills (list)
-- experience
-
-Return ONLY valid JSON.
+{{
+  "name": "",
+  "email": "",
+  "phone": "",
+  "linkedin": "",
+  "location": "",
+  "education_year": "",
+  "skills": ["skill1", "skill2"],
+  "experience": "brief summary as plain text"
+}}
 
 Resume:
 {text[:4000]}
@@ -168,14 +194,14 @@ Resume:
         # 📊 WRITE TO SHEET
         # ==============================
         sheet.append_row([
-            name,
-            email,
-            data.get("phone", ""),
-            data.get("linkedin", ""),
-            data.get("location", ""),
-            data.get("education_year", ""),
-            ", ".join(data.get("skills", [])) if isinstance(data.get("skills"), list) else "",
-            data.get("experience", "")
+            safe_str(name),
+            safe_str(email),
+            safe_str(data.get("phone")),
+            safe_str(data.get("linkedin")),
+            safe_str(data.get("location")),
+            safe_str(data.get("education_year")),
+            safe_str(data.get("skills")),
+            safe_str(data.get("experience")),
         ])
 
         print("✅ DATA WRITTEN")
@@ -185,6 +211,7 @@ Resume:
     except Exception as e:
         print("❌ ERROR:", e)
         return "Internal Server Error"
+
 
 # ==============================
 # 🚀 RUN
