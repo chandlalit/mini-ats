@@ -6,3 +6,4 @@ python-docx
 gspread
 google-auth
 gunicorn
+PyJWT
