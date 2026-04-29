@@ -98,6 +98,8 @@
       cursor: pointer;
     }
 
+    .submit-btn:hover { opacity: 0.9; }
+
     .disclaimer {
       margin-top: 20px;
       font-size: 12px;
@@ -131,10 +133,11 @@
     <h2>Apply for Opportunities</h2>
     <p>Upload your resume and we'll review your profile shortly</p>
 
-    <form action="https://mini-ats-0dm3.onrender.com/upload" method="post" enctype="multipart/form-data">
+    <!-- ✅ form action includes ?rid= dynamically set by JS below -->
+    <form id="uploadForm" method="post" enctype="multipart/form-data">
 
-      <input type="text" name="name" placeholder="Full Name" class="input-box" required>
-      <input type="email" name="email" placeholder="Email Address" class="input-box" required>
+      <input type="text"  name="name"  placeholder="Full Name"      class="input-box" required>
+      <input type="email" name="email" placeholder="Email Address"   class="input-box" required>
 
       <!-- Role Dropdown — loaded dynamically from Roles tab -->
       <select name="role" id="roleDropdown" class="input-box" required>
@@ -147,7 +150,7 @@
       <div class="upload-box">
         <p><strong>Upload Your Resume</strong></p>
         <p>PDF, DOC, DOCX (Max 5MB)</p>
-        <input type="file" name="resume" required>
+        <input type="file" name="resume" accept=".pdf,.doc,.docx" required>
       </div>
 
       <button type="submit" class="submit-btn">Submit Application</button>
@@ -163,6 +166,14 @@
   <script>
     const BASE_URL = "https://mini-ats-0dm3.onrender.com";
 
+    // ✅ Read recruiter ID from URL ?rid=XXXX
+    const urlParams   = new URLSearchParams(window.location.search);
+    const recruiterId = urlParams.get("rid") || "";
+
+    // ✅ Set form action dynamically with rid as query param
+    document.getElementById("uploadForm").action =
+      `${BASE_URL}/upload?rid=${recruiterId}`;
+
     // Load active roles into dropdown
     fetch(`${BASE_URL}/roles`)
       .then(res => res.json())
@@ -176,17 +187,16 @@
           return;
         }
 
-        // Placeholder option
         const placeholder = document.createElement("option");
-        placeholder.value = "";
+        placeholder.value    = "";
         placeholder.disabled = true;
         placeholder.selected = true;
         placeholder.textContent = "Select the role you are applying for";
         dropdown.appendChild(placeholder);
 
         roles.forEach(role => {
-          const option = document.createElement("option");
-          option.value = role.value;
+          const option       = document.createElement("option");
+          option.value       = role.value;
           option.textContent = role.label;
           dropdown.appendChild(option);
         });
