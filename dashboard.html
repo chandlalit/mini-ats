@@ -1,57 +1,63 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Recruiter Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <style>
-    body {
-      font-family: Arial;
-      background: #f4f6f9;
-      padding: 20px;
-    }
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial; background: #f0f2f5; margin: 0; }
 
-    h2 {
-      text-align: center;
-      color: #1f2d3d;
-    }
-
-    /* ── ROLE MANAGER ── */
-    .role-manager {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 24px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-    }
-
-    .role-manager h3 {
-      margin: 0 0 16px 0;
-      color: #1f2d3d;
-      font-size: 16px;
-    }
-
-    .role-add-form {
+    /* ── TOPBAR ── */
+    .topbar {
+      background: linear-gradient(90deg, #007bff, #0056d6);
+      color: white;
+      padding: 14px 24px;
       display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
+      justify-content: space-between;
+      align-items: center;
     }
-
-    .role-add-form input, .role-add-form select {
-      padding: 9px 12px;
+    .topbar h1 { font-size: 18px; font-weight: 700; }
+    .btn-logout {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: none;
+      padding: 7px 16px;
       border-radius: 6px;
-      border: 1px solid #ccc;
+      cursor: pointer;
       font-size: 13px;
     }
+    .btn-logout:hover { background: rgba(255,255,255,0.3); }
 
-    .role-add-form input {
-      flex: 1;
-      min-width: 140px;
+    .page { padding: 20px; }
+
+    /* ── SHARE LINK ── */
+    .share-box {
+      background: white;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
     }
-
-    .btn-add-role {
-      padding: 9px 18px;
+    .share-box label { font-size: 13px; font-weight: 600; color: #555; white-space: nowrap; }
+    .share-link {
+      flex: 1;
+      background: #f0f7ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-family: monospace;
+      color: #1e40af;
+      word-break: break-all;
+      min-width: 200px;
+    }
+    .btn-copy {
+      padding: 8px 16px;
       background: #007bff;
       color: white;
       border: none;
@@ -61,342 +67,328 @@
       white-space: nowrap;
     }
 
-    .btn-add-role:hover { background: #0056d6; }
+    /* ── ROLE MANAGER ── */
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    .card h3 { margin: 0 0 14px; color: #1a1f36; font-size: 15px; }
 
-    .role-msg {
+    .form-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .form-row input, .form-row select {
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1.5px solid #e0e0e0;
       font-size: 13px;
-      margin: 6px 0 10px;
-      min-height: 18px;
+      flex: 1;
+      min-width: 140px;
+      outline: none;
     }
-
-    .role-list-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
-    .role-list-table th {
-      background: #f1f3f6;
-      padding: 8px 10px;
-      text-align: left;
-      color: #555;
-    }
-
-    .role-list-table td {
-      padding: 8px 10px;
-      border-bottom: 1px solid #eee;
-    }
-
-    .status-badge {
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 600;
-    }
-
-    .status-active   { background: #d1fae5; color: #065f46; }
-    .status-inactive { background: #fee2e2; color: #991b1b; }
-    .status-enough   { background: #fef3c7; color: #92400e; }
-
-    .btn-toggle {
-      padding: 4px 10px;
-      border-radius: 5px;
+    .btn-primary {
+      padding: 9px 18px;
+      background: #007bff;
+      color: white;
       border: none;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 11px;
+      font-size: 13px;
+      white-space: nowrap;
       font-weight: 600;
     }
+    .btn-primary:hover { background: #0056d6; }
+
+    .role-msg { font-size: 13px; margin: 6px 0 10px; min-height: 18px; }
+
+    .role-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .role-table th { background: #f8f9fa; padding: 8px 10px; text-align: left; color: #555; }
+    .role-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
+
+    .badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-active   { background: #d1fae5; color: #065f46; }
+    .badge-inactive { background: #fee2e2; color: #991b1b; }
+    .badge-enough   { background: #fef3c7; color: #92400e; }
+
+    .btn-sm { padding: 4px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 11px; font-weight: 600; }
+    .btn-danger  { background: #fee2e2; color: #dc2626; }
+    .btn-success { background: #d1fae5; color: #065f46; }
 
     /* ── FILTERS ── */
     .filters {
       display: flex;
       gap: 10px;
-      margin-bottom: 15px;
       flex-wrap: wrap;
+      margin-bottom: 16px;
     }
-
-    input, select {
-      padding: 8px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
+    .filters input, .filters select {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1.5px solid #e0e0e0;
+      font-size: 13px;
+      outline: none;
     }
 
     /* ── CANDIDATE TABLE ── */
-    table {
+    table.cand-table {
       width: 100%;
       border-collapse: collapse;
-      background: white;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      font-size: 13px;
     }
-
-    th, td {
-      padding: 10px;
-      border-bottom: 1px solid #eee;
-    }
-
-    th {
+    table.cand-table th {
       background: #007bff;
       color: white;
+      padding: 10px 12px;
+      text-align: left;
     }
+    table.cand-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
+    table.cand-table tr:hover td { background: #fafbff; }
 
-    textarea {
+    select.status-sel {
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      font-size: 12px;
+    }
+    textarea.notes-ta {
       width: 100%;
+      padding: 5px;
       border-radius: 5px;
       border: 1px solid #ddd;
-      padding: 5px;
-      box-sizing: border-box;
+      font-size: 12px;
     }
 
-    .btn-save {
-      padding: 6px 10px;
-      background: #28a745;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    .btn-save:hover { background: #1e7e34; }
+    .empty { text-align: center; color: #aaa; padding: 30px; }
   </style>
 </head>
-
 <body>
 
-<h2>Recruiter Dashboard</h2>
+<!-- TOPBAR -->
+<div class="topbar">
+  <h1>📋 Recruiter Dashboard</h1>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <span id="recruiterName" style="font-size:13px;opacity:0.9;"></span>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+</div>
 
-<!-- ════════════════════════════════
-     📋 ROLE MANAGER
-════════════════════════════════ -->
-<div class="role-manager">
-  <h3>📋 Manage Open Roles</h3>
+<div class="page">
 
-  <div class="role-add-form">
-    <input type="text" id="newRoleName" placeholder="Role Name (e.g. Senior QA Engineer)">
-    <input type="text" id="newReqId"    placeholder="Req ID (e.g. SDET_003)">
-    <select id="newRoleStatus">
-      <option value="Active">Active</option>
-      <option value="Inactive">Inactive</option>
-      <option value="Enough Pipeline">Enough Pipeline</option>
-    </select>
-    <button class="btn-add-role" onclick="addRole()">+ Add Role</button>
+  <!-- SHARE LINK -->
+  <div class="share-box">
+    <label>🔗 Your candidate upload link:</label>
+    <div class="share-link" id="shareLink">Loading...</div>
+    <button class="btn-copy" onclick="copyShareLink()">📋 Copy Link</button>
   </div>
 
-  <div class="role-msg" id="roleMsg"></div>
+  <!-- ROLE MANAGER -->
+  <div class="card">
+    <h3>🎯 Manage Roles</h3>
+    <div class="form-row">
+      <input type="text" id="newRoleName" placeholder="Role Name (e.g. Senior QA Engineer)">
+      <input type="text" id="newReqId"    placeholder="Req ID (e.g. SDET_003)">
+      <select id="newRoleStatus">
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive</option>
+        <option value="Enough Pipeline">Enough Pipeline</option>
+      </select>
+      <button class="btn-primary" onclick="addRole()">+ Add Role</button>
+    </div>
+    <div class="role-msg" id="roleMsg"></div>
+    <table class="role-table">
+      <thead><tr><th>Role Name</th><th>Req ID</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody id="roleTableBody"></tbody>
+    </table>
+  </div>
 
-  <table class="role-list-table">
-    <thead>
-      <tr>
-        <th>Role Name</th>
-        <th>Req ID</th>
-        <th>Status</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody id="roleTableBody"></tbody>
-  </table>
+  <!-- CANDIDATES -->
+  <div class="card">
+    <h3>👥 My Candidates</h3>
+    <div class="filters">
+      <input type="text" id="search" placeholder="Search name / email" oninput="applyFilters()">
+      <select id="roleFilter" onchange="applyFilters()"><option value="">All Roles</option></select>
+      <select id="statusFilter" onchange="applyFilters()">
+        <option value="">All Status</option>
+        <option>New</option><option>Screening</option>
+        <option>L1 Interview Scheduled</option><option>L1 Shortlisted</option>
+        <option>Sent to Client</option><option>Client Interview</option>
+        <option>Client Select</option><option>Offer Released</option>
+        <option>Offer Accepted</option>
+      </select>
+    </div>
+
+    <table class="cand-table">
+      <thead>
+        <tr>
+          <th>Name</th><th>Email</th><th>Role</th>
+          <th>Yrs Exp</th><th>Status</th>
+          <th>Notes</th><th>L1 Feedback</th><th>Save</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
 </div>
-
-<!-- ════════════════════════════════
-     🔍 CANDIDATE FILTERS
-════════════════════════════════ -->
-<div class="filters">
-  <input type="text" id="search" placeholder="Search name/email">
-
-  <select id="roleFilter">
-    <option value="">All Roles</option>
-  </select>
-
-  <select id="statusFilter">
-    <option value="">All Status</option>
-    <option>New</option>
-    <option>Screening</option>
-    <option>L1 Interview Scheduled</option>
-    <option>L1 Shortlisted</option>
-    <option>Sent to Client</option>
-    <option>Client Interview</option>
-    <option>Client Select</option>
-    <option>Offer Released</option>
-    <option>Offer Accepted</option>
-  </select>
-
-  <select id="typeFilter">
-    <option value="">All Types</option>
-    <option>Active</option>
-    <option>Passive</option>
-    <option>Enough Pipeline</option>
-  </select>
-</div>
-
-<!-- ════════════════════════════════
-     👥 CANDIDATE TABLE
-════════════════════════════════ -->
-<table>
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Email</th>
-      <th>Role Applied</th>
-      <th>Status</th>
-      <th>Notes</th>
-      <th>L1 Feedback</th>
-      <th>Save</th>
-    </tr>
-  </thead>
-  <tbody id="tableBody"></tbody>
-</table>
-
 
 <script>
 const BASE_URL = "https://mini-ats-0dm3.onrender.com";
 
+// ── AUTH CHECK ──
+const token = localStorage.getItem("ats_token");
+const role  = localStorage.getItem("ats_role");
+if (!token) { window.location.href = "login.html"; }
+
+// Admin accidentally landing here → redirect
+if (role === "admin") { window.location.href = "admin.html"; }
+
+const authHeader = { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" };
+
+const recruiterName = localStorage.getItem("ats_name") || "";
+const recruiterId   = localStorage.getItem("ats_recruiter_id") || "";
+
+document.getElementById("recruiterName").textContent = "👋 " + recruiterName;
+
+// Set share link
+const shareLink = `${window.location.origin}/index.html?rid=${recruiterId}`;
+document.getElementById("shareLink").textContent = shareLink;
+
+function copyShareLink() {
+  navigator.clipboard.writeText(shareLink).then(() => {
+    const btn = document.querySelector(".btn-copy");
+    btn.textContent = "✅ Copied!";
+    setTimeout(() => { btn.textContent = "📋 Copy Link"; }, 2000);
+  });
+}
+
+function logout() {
+  localStorage.clear();
+  window.location.href = "login.html";
+}
+
 let allData = [];
 
-// ══════════════════════════════
-// LOAD CANDIDATES
-// ══════════════════════════════
+// ── LOAD CANDIDATES ──
 function loadCandidates() {
-  fetch(`${BASE_URL}/candidates`)
-    .then(res => res.json())
+  fetch(`${BASE_URL}/candidates`, { headers: authHeader })
+    .then(r => r.json())
     .then(data => {
       allData = data;
 
-      // Populate role filter from candidate data
-      let roles = [...new Set(data.map(d => d.Role).filter(Boolean))];
-      let roleSelect = document.getElementById("roleFilter");
-      roleSelect.innerHTML = '<option value="">All Roles</option>';
-      roles.forEach(role => {
-        let opt = document.createElement("option");
-        opt.text = role;
-        opt.value = role;
-        roleSelect.appendChild(opt);
+      const roles = [...new Set(data.map(d => d.Role).filter(Boolean))];
+      const rf = document.getElementById("roleFilter");
+      rf.innerHTML = '<option value="">All Roles</option>';
+      roles.forEach(r => {
+        const o = document.createElement("option");
+        o.value = o.textContent = r;
+        rf.appendChild(o);
       });
 
       renderTable(data);
     });
 }
 
-// ══════════════════════════════
-// RENDER CANDIDATE TABLE
-// ══════════════════════════════
 function renderTable(data) {
-  let tbody = document.getElementById("tableBody");
+  const tbody = document.getElementById("tableBody");
   tbody.innerHTML = "";
 
-  if (data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;padding:20px;">No candidates found</td></tr>';
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">No candidates yet. Share your upload link to get started!</td></tr>';
     return;
   }
 
   data.forEach(row => {
-    let tr = document.createElement("tr");
-
+    const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${row.Name || ""}</td>
-      <td>${row.Email || ""}</td>
-      <td>${row.Role || ""}</td>
+      <td><strong>${row.Name || ""}</strong></td>
+      <td style="font-size:12px">${row.Email || ""}</td>
+      <td style="font-size:12px">${row.Role || "—"}</td>
+      <td style="font-size:12px">${row["Yrs of Exp"] || "—"}</td>
       <td>
-        <select>
-          <option>New</option>
-          <option>Screening</option>
-          <option>L1 Interview Scheduled</option>
-          <option>L1 Shortlisted</option>
-          <option>Sent to Client</option>
-          <option>Client Interview</option>
-          <option>Client Select</option>
-          <option>Offer Released</option>
+        <select class="status-sel">
+          <option>New</option><option>Screening</option>
+          <option>L1 Interview Scheduled</option><option>L1 Shortlisted</option>
+          <option>Sent to Client</option><option>Client Interview</option>
+          <option>Client Select</option><option>Offer Released</option>
           <option>Offer Accepted</option>
         </select>
       </td>
-      <td><textarea rows="2">${row.Notes || ""}</textarea></td>
-      <td><textarea rows="2">${row["L1 Feedback"] || ""}</textarea></td>
-      <td><button class="btn-save">Save</button></td>
+      <td><textarea class="notes-ta" rows="2">${row.Notes || ""}</textarea></td>
+      <td><textarea class="notes-ta" rows="2">${row["L1 Feedback"] || ""}</textarea></td>
+      <td><button class="btn-sm btn-success" onclick="saveCandidate(this, '${row.Email}')">Save</button></td>
     `;
 
-    let select = tr.querySelector("select");
-    select.value = row.Status || "New";
-
-    tr.querySelector(".btn-save").onclick = () => {
-      fetch(`${BASE_URL}/update`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          email: row.Email,
-          status: select.value,
-          notes: tr.children[4].querySelector("textarea").value,
-          l1_feedback: tr.children[5].querySelector("textarea").value
-        })
-      })
-      .then(res => res.json())
-      .then(() => {
-        tr.querySelector(".btn-save").textContent = "✅ Saved";
-        setTimeout(() => { tr.querySelector(".btn-save").textContent = "Save"; }, 2000);
-      });
-    };
-
+    tr.querySelector(".status-sel").value = row.Status || "New";
     tbody.appendChild(tr);
   });
 }
 
-// ══════════════════════════════
-// FILTER LOGIC
-// ══════════════════════════════
-document.querySelectorAll("#search, #roleFilter, #statusFilter, #typeFilter")
-  .forEach(el => el.addEventListener("input", applyFilters));
+function saveCandidate(btn, email) {
+  const tr         = btn.closest("tr");
+  const status     = tr.querySelector(".status-sel").value;
+  const textareas  = tr.querySelectorAll(".notes-ta");
+  const notes      = textareas[0].value;
+  const l1_feedback = textareas[1].value;
+
+  fetch(`${BASE_URL}/update`, {
+    method: "POST",
+    headers: authHeader,
+    body: JSON.stringify({ email, status, notes, l1_feedback })
+  })
+  .then(r => r.json())
+  .then(() => {
+    btn.textContent = "✅";
+    setTimeout(() => { btn.textContent = "Save"; }, 2000);
+  });
+}
 
 function applyFilters() {
-  let search = document.getElementById("search").value.toLowerCase();
-  let role   = document.getElementById("roleFilter").value;
-  let status = document.getElementById("statusFilter").value;
-  let type   = document.getElementById("typeFilter").value;
+  const search = document.getElementById("search").value.toLowerCase();
+  const roleF  = document.getElementById("roleFilter").value;
+  const statusF = document.getElementById("statusFilter").value;
 
-  let filtered = allData.filter(row => {
-    return (
-      (row.Name?.toLowerCase().includes(search) || row.Email?.toLowerCase().includes(search)) &&
-      (!role   || row.Role === role) &&
-      (!status || row.Status === status) &&
-      (!type   || row["Role Type"] === type)
-    );
-  });
+  const filtered = allData.filter(r =>
+    (!search  || r.Name?.toLowerCase().includes(search) || r.Email?.toLowerCase().includes(search)) &&
+    (!roleF   || r.Role === roleF) &&
+    (!statusF || r.Status === statusF)
+  );
 
   renderTable(filtered);
 }
 
-// ══════════════════════════════
-// LOAD ROLES TABLE
-// ══════════════════════════════
+// ── ROLES ──
 function loadRoles() {
-  fetch(`${BASE_URL}/all_roles`)
-    .then(res => res.json())
+  fetch(`${BASE_URL}/all_roles`, { headers: authHeader })
+    .then(r => r.json())
     .then(roles => {
-      let tbody = document.getElementById("roleTableBody");
+      const tbody = document.getElementById("roleTableBody");
       tbody.innerHTML = "";
 
-      if (roles.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="color:#999;padding:10px;">No roles added yet</td></tr>';
+      if (!roles.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:#aaa;padding:10px">No roles yet</td></tr>';
         return;
       }
 
       roles.forEach(role => {
-        let status    = role["Status"] || "Active";
-        let badgeClass = status === "Active" ? "status-active"
-                       : status === "Enough Pipeline" ? "status-enough"
-                       : "status-inactive";
+        const status = role["Status"] || "Active";
+        const isActive = status === "Active";
+        const badgeClass = isActive ? "badge-active" : status === "Enough Pipeline" ? "badge-enough" : "badge-inactive";
 
-        let nextStatus = status === "Active" ? "Inactive" : "Active";
-        let btnLabel   = status === "Active" ? "Deactivate" : "Activate";
-        let btnColor   = status === "Active" ? "#dc3545" : "#28a745";
-
-        let tr = document.createElement("tr");
+        const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${role["Role Name"] || ""}</td>
-          <td><strong>${role["Req ID"] || ""}</strong></td>
-          <td><span class="status-badge ${badgeClass}">${status}</span></td>
+          <td>${role["Role Name"]}</td>
+          <td><strong>${role["Req ID"]}</strong></td>
+          <td><span class="badge ${badgeClass}">${status}</span></td>
           <td>
-            <button class="btn-toggle" style="background:${btnColor};color:white;"
-              onclick="toggleRoleStatus('${role["Req ID"]}', '${nextStatus}')">
-              ${btnLabel}
+            <button class="btn-sm ${isActive ? 'btn-danger' : 'btn-success'}"
+              onclick="toggleRole('${role["Req ID"]}', '${isActive ? "Inactive" : "Active"}')">
+              ${isActive ? "Deactivate" : "Activate"}
             </button>
           </td>
         `;
@@ -405,33 +397,30 @@ function loadRoles() {
     });
 }
 
-// ══════════════════════════════
-// ADD ROLE
-// ══════════════════════════════
 function addRole() {
-  let roleName = document.getElementById("newRoleName").value.trim();
-  let reqId    = document.getElementById("newReqId").value.trim();
-  let status   = document.getElementById("newRoleStatus").value;
-  let msgEl    = document.getElementById("roleMsg");
+  const roleName = document.getElementById("newRoleName").value.trim();
+  const reqId    = document.getElementById("newReqId").value.trim();
+  const status   = document.getElementById("newRoleStatus").value;
+  const msgEl    = document.getElementById("roleMsg");
 
   if (!roleName || !reqId) {
-    msgEl.style.color = "#dc3545";
-    msgEl.textContent = "⚠️ Both Role Name and Req ID are required.";
+    msgEl.style.color = "#dc2626";
+    msgEl.textContent = "⚠️ Both fields are required";
     return;
   }
 
   fetch(`${BASE_URL}/add_role`, {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ role_name: roleName, req_id: reqId, status: status })
+    headers: authHeader,
+    body: JSON.stringify({ role_name: roleName, req_id: reqId, status })
   })
-  .then(res => res.json())
+  .then(r => r.json())
   .then(data => {
     if (data.error) {
-      msgEl.style.color = "#dc3545";
+      msgEl.style.color = "#dc2626";
       msgEl.textContent = "❌ " + data.error;
     } else {
-      msgEl.style.color = "#28a745";
+      msgEl.style.color = "#16a34a";
       msgEl.textContent = data.message;
       document.getElementById("newRoleName").value = "";
       document.getElementById("newReqId").value    = "";
@@ -440,25 +429,19 @@ function addRole() {
   });
 }
 
-// ══════════════════════════════
-// TOGGLE ROLE STATUS
-// ══════════════════════════════
-function toggleRoleStatus(reqId, newStatus) {
+function toggleRole(reqId, newStatus) {
   fetch(`${BASE_URL}/update_role`, {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: authHeader,
     body: JSON.stringify({ req_id: reqId, status: newStatus })
   })
-  .then(res => res.json())
+  .then(r => r.json())
   .then(() => loadRoles());
 }
 
-// ══════════════════════════════
-// INIT
-// ══════════════════════════════
+// ── INIT ──
 loadCandidates();
 loadRoles();
-
 </script>
 
 </body>
