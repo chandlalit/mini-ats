@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial; background: #f0f2f5; margin: 0; }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      background: linear-gradient(90deg, #1a1f36, #2d3561);
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .topbar h1 { font-size: 18px; font-weight: 700; }
+    .topbar span { font-size: 13px; opacity: 0.8; }
+    .btn-logout {
+      background: rgba(255,255,255,0.15);
+      color: white;
+      border: none;
+      padding: 7px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn-logout:hover { background: rgba(255,255,255,0.25); }
+
+    .page { padding: 24px; }
+
+    /* ── TABS ── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      background: white;
+      padding: 6px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      width: fit-content;
+    }
+    .tab {
+      padding: 9px 20px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      background: transparent;
+      color: #555;
+      font-weight: 500;
+    }
+    .tab.active {
+      background: #007bff;
+      color: white;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    .card h3 { margin: 0 0 16px; color: #1a1f36; font-size: 15px; }
+
+    /* ── FORM ROW ── */
+    .form-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .form-row input, .form-row select {
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1.5px solid #e0e0e0;
+      font-size: 13px;
+      flex: 1;
+      min-width: 140px;
+      outline: none;
+    }
+    .form-row input:focus, .form-row select:focus { border-color: #007bff; }
+
+    .btn-primary {
+      padding: 9px 18px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+    .btn-primary:hover { background: #0056d6; }
+
+    .msg { font-size: 13px; margin: 8px 0; min-height: 18px; }
+
+    /* ── TABLES ── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: #f8f9fa;
+      padding: 10px 12px;
+      text-align: left;
+      color: #555;
+      font-weight: 600;
+      border-bottom: 2px solid #eee;
+    }
+    td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
+    tr:hover td { background: #fafbff; }
+
+    /* ── BADGES ── */
+    .badge {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-active   { background: #d1fae5; color: #065f46; }
+    .badge-inactive { background: #fee2e2; color: #991b1b; }
+    .badge-new      { background: #dbeafe; color: #1e40af; }
+
+    /* ── BUTTONS ── */
+    .btn-sm {
+      padding: 4px 12px;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .btn-danger  { background: #fee2e2; color: #dc2626; }
+    .btn-success { background: #d1fae5; color: #065f46; }
+
+    /* ── LINK BOX ── */
+    .link-box {
+      background: #f0f7ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      color: #1e40af;
+      font-family: monospace;
+      word-break: break-all;
+      cursor: pointer;
+    }
+    .link-box:hover { background: #dbeafe; }
+
+    /* ── FILTERS ── */
+    .filters {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .filters input, .filters select {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1.5px solid #e0e0e0;
+      font-size: 13px;
+      outline: none;
+    }
+
+    /* ── STATUS SELECT ── */
+    select.status-sel {
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      font-size: 12px;
+    }
+
+    textarea.notes-ta {
+      width: 100%;
+      padding: 5px;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+      font-size: 12px;
+      resize: vertical;
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .empty { text-align: center; color: #aaa; padding: 30px; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <h1>⚡ Admin Dashboard</h1>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <span id="adminName">Loading...</span>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('recruiters')">👥 Recruiters</button>
+    <button class="tab" onclick="switchTab('candidates')">📋 All Candidates</button>
+    <button class="tab" onclick="switchTab('roles')">🎯 Roles</button>
+  </div>
+
+  <!-- ════ TAB: RECRUITERS ════ -->
+  <div class="tab-content active" id="tab-recruiters">
+
+    <!-- Add Recruiter -->
+    <div class="card">
+      <h3>➕ Add New Recruiter</h3>
+      <div class="form-row">
+        <input type="text"     id="rName"     placeholder="Full Name">
+        <input type="email"    id="rEmail"    placeholder="Email">
+        <input type="text"     id="rCompany"  placeholder="Company">
+        <input type="password" id="rPassword" placeholder="Set Password">
+        <button class="btn-primary" onclick="addRecruiter()">Add Recruiter</button>
+      </div>
+      <div class="msg" id="rMsg"></div>
+    </div>
+
+    <!-- Recruiter List -->
+    <div class="card">
+      <h3>👥 Recruiter Accounts</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Company</th>
+            <th>Status</th>
+            <th>Unique Upload Link</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="recruiterTableBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- ════ TAB: ALL CANDIDATES ════ -->
+  <div class="tab-content" id="tab-candidates">
+    <div class="card">
+      <div class="filters">
+        <input type="text" id="cSearch" placeholder="Search name / email" oninput="applyFilters()">
+        <select id="cRoleFilter" onchange="applyFilters()"><option value="">All Roles</option></select>
+        <select id="cStatusFilter" onchange="applyFilters()">
+          <option value="">All Status</option>
+          <option>New</option><option>Screening</option>
+          <option>L1 Interview Scheduled</option><option>L1 Shortlisted</option>
+          <option>Sent to Client</option><option>Client Interview</option>
+          <option>Client Select</option><option>Offer Released</option>
+          <option>Offer Accepted</option>
+        </select>
+        <select id="cRecruiterFilter" onchange="applyFilters()"><option value="">All Recruiters</option></select>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th><th>Email</th><th>Role</th>
+            <th>Yrs Exp</th><th>Status</th>
+            <th>Notes</th><th>Recruiter</th><th>Save</th>
+          </tr>
+        </thead>
+        <tbody id="candidateTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ════ TAB: ROLES ════ -->
+  <div class="tab-content" id="tab-roles">
+    <div class="card">
+      <h3>➕ Add New Role</h3>
+      <div class="form-row">
+        <input type="text" id="newRoleName" placeholder="Role Name (e.g. Senior QA Engineer)">
+        <input type="text" id="newReqId"    placeholder="Req ID (e.g. SDET_003)">
+        <select id="newRoleStatus">
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+          <option value="Enough Pipeline">Enough Pipeline</option>
+        </select>
+        <button class="btn-primary" onclick="addRole()">Add Role</button>
+      </div>
+      <div class="msg" id="roleMsg"></div>
+    </div>
+
+    <div class="card">
+      <h3>🎯 All Roles</h3>
+      <table>
+        <thead>
+          <tr><th>Role Name</th><th>Req ID</th><th>Status</th><th>Action</th></tr>
+        </thead>
+        <tbody id="roleTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const BASE_URL = "https://mini-ats-0dm3.onrender.com";
+
+// ── AUTH CHECK ──
+const token = localStorage.getItem("ats_token");
+const role  = localStorage.getItem("ats_role");
+if (!token || role !== "admin") {
+  window.location.href = "login.html";
+}
+
+const authHeader = { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" };
+
+document.getElementById("adminName").textContent = "👋 " + (localStorage.getItem("ats_name") || "Admin");
+
+let allCandidates = [];
+let allRecruiters = [];
+
+// ── TABS ──
+function switchTab(name) {
+  document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(el => el.classList.remove("active"));
+  document.getElementById(`tab-${name}`).classList.add("active");
+  event.target.classList.add("active");
+}
+
+// ── LOGOUT ──
+function logout() {
+  localStorage.clear();
+  window.location.href = "login.html";
+}
+
+// ══════════════════════════════
+// RECRUITERS
+// ══════════════════════════════
+function loadRecruiters() {
+  fetch(`${BASE_URL}/recruiters`, { headers: authHeader })
+    .then(r => r.json())
+    .then(data => {
+      allRecruiters = data;
+      const tbody = document.getElementById("recruiterTableBody");
+      tbody.innerHTML = "";
+
+      // Update recruiter filter in candidates tab
+      const recFilter = document.getElementById("cRecruiterFilter");
+      recFilter.innerHTML = '<option value="">All Recruiters</option>';
+
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty">No recruiters yet. Add one above.</td></tr>';
+        return;
+      }
+
+      data.forEach(r => {
+        const isActive  = r.active === "Yes";
+        const uploadLink = `${window.location.origin}/index.html?rid=${r.recruiter_id}`;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><strong>${r.name}</strong></td>
+          <td>${r.email}</td>
+          <td>${r.company || "—"}</td>
+          <td><span class="badge ${isActive ? 'badge-active' : 'badge-inactive'}">${isActive ? 'Active' : 'Inactive'}</span></td>
+          <td>
+            <div class="link-box" onclick="copyLink('${uploadLink}', this)" title="Click to copy">
+              📋 ${uploadLink}
+            </div>
+          </td>
+          <td>
+            <button class="btn-sm ${isActive ? 'btn-danger' : 'btn-success'}"
+              onclick="toggleRecruiter('${r.email}')">
+              ${isActive ? 'Deactivate' : 'Activate'}
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+
+        // Add to filter
+        const opt = document.createElement("option");
+        opt.value = r.recruiter_id;
+        opt.textContent = r.name;
+        recFilter.appendChild(opt);
+      });
+    });
+}
+
+function addRecruiter() {
+  const name     = document.getElementById("rName").value.trim();
+  const email    = document.getElementById("rEmail").value.trim();
+  const company  = document.getElementById("rCompany").value.trim();
+  const password = document.getElementById("rPassword").value.trim();
+  const msgEl    = document.getElementById("rMsg");
+
+  if (!name || !email || !password) {
+    msgEl.style.color = "#dc2626";
+    msgEl.textContent = "⚠️ Name, email and password are required";
+    return;
+  }
+
+  fetch(`${BASE_URL}/add_recruiter`, {
+    method: "POST",
+    headers: authHeader,
+    body: JSON.stringify({ name, email, company, password })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) {
+      msgEl.style.color = "#dc2626";
+      msgEl.textContent = "❌ " + data.error;
+    } else {
+      msgEl.style.color = "#16a34a";
+      msgEl.textContent = data.message;
+      document.getElementById("rName").value     = "";
+      document.getElementById("rEmail").value    = "";
+      document.getElementById("rCompany").value  = "";
+      document.getElementById("rPassword").value = "";
+      loadRecruiters();
+    }
+  });
+}
+
+function toggleRecruiter(email) {
+  fetch(`${BASE_URL}/toggle_recruiter`, {
+    method: "POST",
+    headers: authHeader,
+    body: JSON.stringify({ email })
+  })
+  .then(r => r.json())
+  .then(() => loadRecruiters());
+}
+
+function copyLink(link, el) {
+  navigator.clipboard.writeText(link).then(() => {
+    const orig = el.innerHTML;
+    el.innerHTML = "✅ Copied!";
+    setTimeout(() => { el.innerHTML = orig; }, 2000);
+  });
+}
+
+// ══════════════════════════════
+// CANDIDATES
+// ══════════════════════════════
+function loadCandidates() {
+  fetch(`${BASE_URL}/candidates`, { headers: authHeader })
+    .then(r => r.json())
+    .then(data => {
+      allCandidates = data;
+
+      // Populate role filter
+      const roles = [...new Set(data.map(d => d.Role).filter(Boolean))];
+      const rf = document.getElementById("cRoleFilter");
+      rf.innerHTML = '<option value="">All Roles</option>';
+      roles.forEach(r => {
+        const o = document.createElement("option");
+        o.value = o.textContent = r;
+        rf.appendChild(o);
+      });
+
+      renderCandidates(data);
+    });
+}
+
+function renderCandidates(data) {
+  const tbody = document.getElementById("candidateTableBody");
+  tbody.innerHTML = "";
+
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">No candidates found</td></tr>';
+    return;
+  }
+
+  data.forEach(row => {
+    // Find recruiter name by ID
+    const rec = allRecruiters.find(r => r.recruiter_id === row["Recruiter ID"]);
+    const recName = rec ? rec.name : (row["Recruiter ID"] ? row["Recruiter ID"] : "—");
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${row.Name || ""}</strong><br><small style="color:#999">${row.Location || ""}</small></td>
+      <td style="font-size:12px">${row.Email || ""}</td>
+      <td style="font-size:12px">${row.Role || "—"}</td>
+      <td style="font-size:12px">${row["Yrs of Exp"] || "—"}</td>
+      <td>
+        <select class="status-sel">
+          <option>New</option><option>Screening</option>
+          <option>L1 Interview Scheduled</option><option>L1 Shortlisted</option>
+          <option>Sent to Client</option><option>Client Interview</option>
+          <option>Client Select</option><option>Offer Released</option>
+          <option>Offer Accepted</option>
+        </select>
+      </td>
+      <td><textarea class="notes-ta" rows="2">${row.Notes || ""}</textarea></td>
+      <td style="font-size:12px">${recName}</td>
+      <td><button class="btn-sm btn-success" onclick="saveCandidate(this, '${row.Email}')">Save</button></td>
+    `;
+
+    tr.querySelector(".status-sel").value = row.Status || "New";
+    tbody.appendChild(tr);
+  });
+}
+
+function saveCandidate(btn, email) {
+  const tr       = btn.closest("tr");
+  const status   = tr.querySelector(".status-sel").value;
+  const notes    = tr.querySelector(".notes-ta").value;
+
+  fetch(`${BASE_URL}/update`, {
+    method: "POST",
+    headers: authHeader,
+    body: JSON.stringify({ email, status, notes, l1_feedback: "" })
+  })
+  .then(r => r.json())
+  .then(() => {
+    btn.textContent = "✅";
+    setTimeout(() => { btn.textContent = "Save"; }, 2000);
+  });
+}
+
+function applyFilters() {
+  const search    = document.getElementById("cSearch").value.toLowerCase();
+  const roleF     = document.getElementById("cRoleFilter").value;
+  const statusF   = document.getElementById("cStatusFilter").value;
+  const recruiterF = document.getElementById("cRecruiterFilter").value;
+
+  const filtered = allCandidates.filter(r => {
+    return (
+      (!search    || r.Name?.toLowerCase().includes(search) || r.Email?.toLowerCase().includes(search)) &&
+      (!roleF     || r.Role === roleF) &&
+      (!statusF   || r.Status === statusF) &&
+      (!recruiterF || r["Recruiter ID"] === recruiterF)
+    );
+  });
+
+  renderCandidates(filtered);
+}
+
+// ══════════════════════════════
+// ROLES
+// ══════════════════════════════
+function loadRoles() {
+  fetch(`${BASE_URL}/all_roles`, { headers: authHeader })
+    .then(r => r.json())
+    .then(roles => {
+      const tbody = document.getElementById("roleTableBody");
+      tbody.innerHTML = "";
+
+      if (!roles.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">No roles yet</td></tr>';
+        return;
+      }
+
+      roles.forEach(role => {
+        const status    = role["Status"] || "Active";
+        const isActive  = status === "Active";
+        const nextStatus = isActive ? "Inactive" : "Active";
+        const badgeClass = isActive ? "badge-active" : status === "Enough Pipeline" ? "" : "badge-inactive";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${role["Role Name"]}</td>
+          <td><strong>${role["Req ID"]}</strong></td>
+          <td><span class="badge ${badgeClass}">${status}</span></td>
+          <td>
+            <button class="btn-sm ${isActive ? 'btn-danger' : 'btn-success'}"
+              onclick="toggleRole('${role["Req ID"]}', '${nextStatus}')">
+              ${isActive ? "Deactivate" : "Activate"}
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    });
+}
+
+function addRole() {
+  const roleName = document.getElementById("newRoleName").value.trim();
+  const reqId    = document.getElementById("newReqId").value.trim();
+  const status   = document.getElementById("newRoleStatus").value;
+  const msgEl    = document.getElementById("roleMsg");
+
+  if (!roleName || !reqId) {
+    msgEl.style.color = "#dc2626";
+    msgEl.textContent = "⚠️ Role Name and Req ID required";
+    return;
+  }
+
+  fetch(`${BASE_URL}/add_role`, {
+    method: "POST",
+    headers: authHeader,
+    body: JSON.stringify({ role_name: roleName, req_id: reqId, status })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) {
+      msgEl.style.color = "#dc2626";
+      msgEl.textContent = "❌ " + data.error;
+    } else {
+      msgEl.style.color = "#16a34a";
+      msgEl.textContent = data.message;
+      document.getElementById("newRoleName").value = "";
+      document.getElementById("newReqId").value    = "";
+      loadRoles();
+    }
+  });
+}
+
+function toggleRole(reqId, newStatus) {
+  fetch(`${BASE_URL}/update_role`, {
+    method: "POST",
+    headers: authHeader,
+    body: JSON.stringify({ req_id: reqId, status: newStatus })
+  })
+  .then(r => r.json())
+  .then(() => loadRoles());
+}
+
+// ── INIT ──
+loadRecruiters();
+loadCandidates();
+loadRoles();
+</script>
+
+</body>
+</html>
